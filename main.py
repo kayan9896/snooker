@@ -232,8 +232,11 @@ ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, EDGE_WIDTH 
             WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, acceleration=0.05)
 stick = Stick()
 
+# Main game loop modifications
 running = True
 mouse_pressed = False
+shot_ready = False  # New flag to control shot release
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -241,18 +244,12 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if ball.speed_x == 0 and ball.speed_y == 0:  # Only allow shot if ball is stationary
                 mouse_pressed = True
-                mouse_x, mouse_y = event.pos
-                # Calculate velocity based on opposite direction of stick
-                angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
-                power = 15  # Adjust this value to change shot power
-                ball.speed_x = power * math.cos(angle)
-                ball.speed_y = power * math.sin(angle)
-                ball.acceleration_x = ball.acceleration * abs(math.cos(angle))  
-                ball.acceleration_y = ball.acceleration * abs(math.sin(angle))  # Use absolute value
-                stick.visible = False
+                stick.start_charging()
 
         elif event.type == pygame.MOUSEBUTTONUP:
-            mouse_pressed = False
+            if ball.speed_x == 0 and ball.speed_y == 0:
+                mouse_pressed = False
+                shot_ready = True
 
     # Get current mouse position
     mouse_pos = pygame.mouse.get_pos()
@@ -260,12 +257,51 @@ while running:
     # Update ball position
     ball.move()
 
+    # Update stick power if mouse is pressed
+    if mouse_pressed and ball.speed_x == 0 and ball.speed_y == 0:
+        # Calculate angle between ball and mouse for drawing and potential shot
+        mouse_x, mouse_y = mouse_pos
+        angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
+
+        # Update power
+        stick.update_power()
+
+        # Automatic shot release when max power is reached
+        if stick.max_power_reached:
+            shot_ready = True
+
+    # Check if shot is ready to be released
+    if shot_ready and ball.speed_x == 0 and ball.speed_y == 0:
+        # Get current mouse position for shot direction
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        # Calculate velocity based on opposite direction of stick
+        angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
+
+        # Use the calculated power
+        ball.speed_x = stick.power * math.cos(angle)
+        ball.speed_y = stick.power * math.sin(angle)
+        ball.acceleration_x = ball.acceleration * abs(math.cos(angle))  
+        ball.acceleration_y = ball.acceleration * abs(math.sin(angle))
+
+        # Hide stick after shot
+        stick.visible = False
+        # Reset charge
+        stick.reset_charge()
+        # Reset shot ready flag
+        shot_ready = False
+        # Reset mouse press
+        mouse_pressed = False
+
     # Draw everything
     draw_pool_table()
     ball.draw(screen)
     if ball.speed_x == 0 and ball.speed_y == 0:
         stick.visible = True
-        stick.draw(screen, ball, mouse_pos)
+        # Pass angle to draw method for power indicator positioning
+        mouse_x, mouse_y = mouse_pos
+        angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
+        stick.draw(screen, ball, mouse_pos, angle)
 
     pygame.display.flip()
     pygame.time.Clock().tick(60)  # Limit to 60 FPS
