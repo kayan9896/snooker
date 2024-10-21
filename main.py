@@ -228,7 +228,7 @@ def draw_pool_table():
 
 buffer_height=POCKET_RADIUS
 # Main loop
-ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, EDGE_WIDTH + buffer_height, BALL_RADIUS, WHITE,
+ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, EDGE_WIDTH + buffer_height + BALL_RADIUS, BALL_RADIUS, WHITE,
             WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, acceleration=0.05)
 stick = Stick()
 
@@ -250,10 +250,10 @@ while running:
                 ball.acceleration_x = ball.acceleration * abs(math.cos(angle))  
                 ball.acceleration_y = ball.acceleration * abs(math.sin(angle))  # Use absolute value
                 stick.visible = False
-                
+
         elif event.type == pygame.MOUSEBUTTONUP:
             mouse_pressed = False
-            
+
     # Get current mouse position
     mouse_pos = pygame.mouse.get_pos()
 
