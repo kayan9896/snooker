@@ -15,7 +15,7 @@ WIDTH, HEIGHT = 800, 400
 EDGE_WIDTH = 20
 POCKET_RADIUS = 15
 DIAMOND_SIZE = 5
-BALL_RADIUS = 10
+BALL_RADIUS = 8
 FRICTION_COEFFICIENT = 0.99
 pocket_radius=POCKET_RADIUS
 offset = pocket_radius / math.sqrt(2)
@@ -247,12 +247,13 @@ while running:
                 power = 15  # Adjust this value to change shot power
                 ball.speed_x = power * math.cos(angle)
                 ball.speed_y = power * math.sin(angle)
-                ball.acceleration_x*=math.cos(angle)
-                ball.acceleration_y*=math.sin(angle)
+                ball.acceleration_x = ball.acceleration * abs(math.cos(angle))  
+                ball.acceleration_y = ball.acceleration * abs(math.sin(angle))  # Use absolute value
                 stick.visible = False
+                
         elif event.type == pygame.MOUSEBUTTONUP:
             mouse_pressed = False
-
+            
     # Get current mouse position
     mouse_pos = pygame.mouse.get_pos()
 
