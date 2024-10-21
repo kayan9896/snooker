@@ -58,7 +58,7 @@ class Stick:
                          (stick_end_x, stick_end_y),
                          self.thickness)
 
-        # Optional: Draw power indicator near stick end
+        # Draw power indicator near stick end
         power_indicator_length = 50
 
         # Calculate position for power indicator slightly offset from stick end
