@@ -16,7 +16,7 @@ class Ball:
         self.edge_width = edge_width
         self.pocket_radius = pocket_radius
         self.offset = offset
-        self.buffer_height = offset
+        self.buffer_height = pocket_radius
 
     def draw(self, screen):
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
@@ -29,37 +29,6 @@ class Ball:
         self.x += self.speed_x
         self.y += self.speed_y
 
-
-        # Check for collisions with buffers
-        if self.x < self.edge_width + self.buffer_height + self.radius:
-            if self.y < self.edge_width + self.buffer_height - self.offset or self.y > self.height - self.edge_width - self.buffer_height + self.offset:
-                # Rebound on the leg of the trapezoid
-                self.x = 2 * (self.edge_width + self.buffer_height + self.radius) - self.x
-                self.y = 2 * (self.edge_width + self.buffer_height + self.radius) * (self.y - self.edge_width) / (self.height - 2 * self.edge_width) - self.y
-                self.speed_x, self.speed_y = -self.speed_y, -self.speed_x
-            else:
-                # Rebound on the base of the trapezoid
-                self.x = self.edge_width + self.buffer_height + self.radius
-                self.speed_x = -self.speed_x
-
-        elif self.x > self.width - self.edge_width - self.buffer_height - self.radius:
-            if self.y < self.edge_width + self.buffer_height - self.offset or self.y > self.height - self.edge_width - self.buffer_height + self.offset:
-                # Rebound on the leg of the trapezoid
-                self.x = 2 * (self.width - self.edge_width - self.buffer_height - self.radius) - self.x
-                self.y = 2 * (self.height - self.edge_width - self.buffer_height - self.radius) * (self.y - self.edge_width) / (self.height - 2 * self.edge_width) - self.y
-                self.speed_x, self.speed_y = self.speed_y, self.speed_x
-            else:
-                # Rebound on the base of the trapezoid
-                self.x = self.width - self.edge_width - self.buffer_height - self.radius
-                self.speed_x = -self.speed_x
-
-        if self.y < self.edge_width + self.buffer_height + self.radius:
-            self.y = self.edge_width + self.buffer_height + self.radius
-            self.speed_y = -self.speed_y
-        elif self.y > self.height - self.edge_width - self.buffer_height - self.radius:
-            self.y = self.height - self.edge_width - self.buffer_height - self.radius
-            self.speed_y = -self.speed_y
-
         # Check for pockets
         if self.check_pocket(self.edge_width + self.offset, self.edge_width + self.offset, self.pocket_radius):
             self.reset()
@@ -69,11 +38,25 @@ class Ball:
             self.reset()
         elif self.check_pocket(self.width - self.edge_width - self.offset, self.height - self.edge_width - self.offset, self.pocket_radius):
             self.reset()
-        elif self.check_pocket(self.width // 2, self.edge_width, self.pocket_radius):
+        elif self.check_pocket(self.width // 2, self.edge_width, self.pocket_radius+4):
             self.reset()
-        elif self.check_pocket(self.width // 2, self.height - self.edge_width, self.pocket_radius):
+        elif self.check_pocket(self.width // 2, self.height - self.edge_width, self.pocket_radius+4):
             self.reset()
 
+        
+        # Check for collisions with buffers
+        if self.x < self.edge_width + self.buffer_height + self.radius:
+            self.speed_x = -self.speed_x
+
+        elif self.x > self.width - self.edge_width - self.buffer_height - self.radius:
+            self.speed_x = -self.speed_x
+
+        if self.y < self.edge_width + self.buffer_height + self.radius:
+            self.speed_y = -self.speed_y
+        elif self.y > self.height - self.edge_width - self.buffer_height - self.radius:
+            self.speed_y = -self.speed_y
+
+        
     def check_pocket(self, x, y, radius):
         return (self.x - x) ** 2 + (self.y - y) ** 2 <= radius ** 2
 
@@ -87,6 +70,6 @@ class Ball:
 
     def reset(self):
         self.x = self.edge_width + (self.width - self.edge_width * 2 - self.pocket_radius * 2) / 8 * 2
-        self.y = self.edge_width + self.offset
+        self.y = self.edge_width + self.pocket_radius + self.radius
         self.speed_x = 0
         self.speed_y = 0
