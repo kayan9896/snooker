@@ -1,5 +1,4 @@
 import pygame
-import math
 
 class Ball:
     def __init__(self, x, y, radius, color, width, height, edge_width, pocket_radius, offset, acceleration):
@@ -9,6 +8,7 @@ class Ball:
         self.color = color
         self.speed_x = 0.0
         self.speed_y = 0.0
+        self.acceleration = acceleration
         self.acceleration_x = acceleration
         self.acceleration_y = acceleration
         self.width = width
@@ -41,7 +41,7 @@ class Ball:
                 # Rebound on the base of the trapezoid
                 self.x = self.edge_width + self.buffer_height + self.radius
                 self.speed_x = -self.speed_x
-                                
+
         elif self.x > self.width - self.edge_width - self.buffer_height - self.radius:
             if self.y < self.edge_width + self.buffer_height - self.offset or self.y > self.height - self.edge_width - self.buffer_height + self.offset:
                 # Rebound on the leg of the trapezoid
@@ -84,7 +84,7 @@ class Ball:
             return min(0, speed + acceleration)
         else:
             return 0
-            
+
     def reset(self):
         self.x = self.edge_width + (self.width - self.edge_width * 2 - self.pocket_radius * 2) / 8 * 2
         self.y = self.edge_width + self.offset
