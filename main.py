@@ -228,8 +228,21 @@ def draw_pool_table():
 
 buffer_height=POCKET_RADIUS
 # Main loop
-ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, EDGE_WIDTH + buffer_height + BALL_RADIUS, BALL_RADIUS, WHITE,
-            WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, acceleration=0.05)
+ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, 
+      EDGE_WIDTH + buffer_height + BALL_RADIUS, 
+      BALL_RADIUS, WHITE, WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, 
+      acceleration=0.05, resetable=True)
+
+yellow_ball = Ball(WIDTH - EDGE_WIDTH - (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, 
+       HEIGHT/2, 
+       BALL_RADIUS, (255, 255, 0), WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, 
+       acceleration=0.05, resetable=False)
+
+red_ball = Ball(WIDTH - EDGE_WIDTH - (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2 + BALL_RADIUS * 2, 
+    HEIGHT/2, 
+    BALL_RADIUS, (255, 0, 0), WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, 
+    acceleration=0.05, resetable=False)
+
 stick = Stick()
 
 # Main game loop modifications
@@ -255,7 +268,10 @@ while running:
     mouse_pos = pygame.mouse.get_pos()
 
     # Update ball position
-    ball.move()
+    ball.move([red_ball, yellow_ball])
+    yellow_ball.move([ball, red_ball])
+    red_ball.move([ball, yellow_ball])
+
 
     # Update stick power if mouse is pressed
     if mouse_pressed and ball.speed_x == 0 and ball.speed_y == 0:
@@ -281,8 +297,6 @@ while running:
         # Use the calculated power
         ball.speed_x = stick.power * math.cos(angle)
         ball.speed_y = stick.power * math.sin(angle)
-        ball.acceleration_x = ball.acceleration * abs(math.cos(angle))  
-        ball.acceleration_y = ball.acceleration * abs(math.sin(angle))
 
         # Hide stick after shot
         stick.visible = False
@@ -296,14 +310,23 @@ while running:
     # Draw everything
     draw_pool_table()
     ball.draw(screen)
+    yellow_ball.draw(screen)
+    red_ball.draw(screen)
+    
+    def are_all_balls_stopped(balls):
+        return all(ball.speed_x == 0 and ball.speed_y == 0 for ball in balls if ball.in_game)
+        
     if ball.speed_x == 0 and ball.speed_y == 0:
-        stick.visible = True
-        # Pass angle to draw method for power indicator positioning
-        mouse_x, mouse_y = mouse_pos
-        angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
-        stick.draw(screen, ball, mouse_pos, angle)
+        # In the drawing section
+        if are_all_balls_stopped([ball, yellow_ball, red_ball]) and ball.in_game:
+            
+            stick.visible = True
+            # Pass angle to draw method for power indicator positioning
+            mouse_x, mouse_y = mouse_pos
+            angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
+            stick.draw(screen, ball, mouse_pos, angle)
 
     pygame.display.flip()
     pygame.time.Clock().tick(60)  # Limit to 60 FPS
 
-pygame.quit()
+pygame.quit()    
