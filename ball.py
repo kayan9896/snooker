@@ -60,14 +60,15 @@ class Ball:
         self.speed_x = self.update_speed(self.speed_x, self.acceleration_x)
         self.speed_y = self.update_speed(self.speed_y, self.acceleration_y)
 
+        self.x += self.speed_x
+        self.y += self.speed_y
+
         # Check for collisions with other balls before moving
         if other_balls:
             for ball in other_balls:
                 if ball != self and ball.in_game:
                     self.check_ball_collision(ball)
 
-        self.x += self.speed_x
-        self.y += self.speed_y
 
         # Update acceleration based on current speed
         angle = math.atan2(self.speed_y, self.speed_x)
@@ -115,12 +116,10 @@ class Ball:
 
         # Check if balls are colliding
         if distance <= (self.radius + other_ball.radius):
-            
-            self.collision_order.append(other_ball)
-            other_ball.collision_order.append(self)
-            self.last_collision = other_ball
-            other_ball.last_collision = self
-            print(self.last_collision.color)
+            if self.color==(255,255,255):
+                self.collision_order.append(other_ball)
+                other_ball.collision_order.append(self)
+                print([i.color for i in self.collision_order])
             # Calculate collision angle
             angle = math.atan2(dy, dx)
 
