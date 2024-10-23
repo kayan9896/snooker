@@ -21,6 +21,31 @@ class Ball:
         self.mass = 1  # Add mass for momentum calculations
         self.in_game = True  # New flag to control drawing and movement
         self.resetable = resetable  # Flag to determine if ball can be reset
+        self.collision_order = []
+        self.initial_x = x
+        self.initial_y = y
+        self.foot_spot_x = width - edge_width - (width - edge_width * 2 - pocket_radius * 2) / 8 * 2
+        self.foot_spot_y = height / 2
+
+    def spot(self, other_balls):
+        self.x = self.foot_spot_x
+        self.y = self.foot_spot_y
+        self.speed_x = 0
+        self.speed_y = 0
+        self.in_game = True
+        self.collision_order.clear()
+
+        # Check if the spot is occupied
+        while any(((self.x - ball.x)**2 + (self.y - ball.y)**2) <= (2*self.radius)**2 for ball in other_balls if ball != self and ball.in_game):
+            # Move the ball back towards the center of the table
+            self.y -= self.radius
+            if self.y < self.radius:  # If we've reached the top of the table
+                self.y = self.height - self.radius  # Move to the bottom
+                self.x -= self.radius  # and shift left
+
+        # Ensure the ball is on the table
+        self.x = max(self.edge_width + self.radius, min(self.x, self.width - self.edge_width - self.radius))
+        self.y = max(self.edge_width + self.radius, min(self.y, self.height - self.edge_width - self.radius))
 
     def draw(self, screen):
         if self.in_game:
@@ -90,6 +115,12 @@ class Ball:
 
         # Check if balls are colliding
         if distance <= (self.radius + other_ball.radius):
+            
+            self.collision_order.append(other_ball)
+            other_ball.collision_order.append(self)
+            self.last_collision = other_ball
+            other_ball.last_collision = self
+            print(self.last_collision.color)
             # Calculate collision angle
             angle = math.atan2(dy, dx)
 
@@ -143,9 +174,9 @@ class Ball:
             return 0
 
     def reset(self):
-        self.x = self.edge_width + (self.width - self.edge_width * 2 - self.pocket_radius * 2) / 8 * 2
-        self.y = self.edge_width + self.pocket_radius + self.radius
+        self.x = self.initial_x
+        self.y = self.initial_y
         self.speed_x = 0
         self.speed_y = 0
         self.in_game = True
-        self.resetable = True
+        self.collision_order.clear()
