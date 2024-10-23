@@ -1,6 +1,6 @@
 import pygame
 import math
-from ball import Ball
+from ball2 import Ball
 from stick import Stick
 # Initialize Pygame
 pygame.init()
@@ -224,7 +224,78 @@ def draw_pool_table():
     # Draw the foot spot
     pygame.draw.circle(screen, WHITE, (int(WIDTH - EDGE_WIDTH - (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2), int(HEIGHT/2)), DIAMOND_SIZE)
 
+def are_all_balls_stopped(balls):
+    return all(ball.speed_x == 0 and ball.speed_y == 0 for ball in balls if ball.in_game)
 
+def check_foul(cue_ball, ball_3, ball_9):
+    global foul
+    foul = False
+
+    if not cue_ball.in_game:
+        foul = True
+        print("Foul: Cue ball pocketed")
+    elif not cue_ball.collision_order:
+        foul = True
+        print("Foul: No ball hit")
+    elif ball_3.in_game and cue_ball.collision_order[0] != ball_3:
+        foul = True
+        print("Foul: 3 ball not hit first")
+    elif ball_9 in cue_ball.collision_order and ball_3 in cue_ball.collision_order:
+        if cue_ball.collision_order.index(ball_9) < cue_ball.collision_order.index(ball_3):
+            foul = True
+            print("Foul: 9 ball hit before 3 ball")
+            
+
+def handle_game_logic(cue_ball, ball_3, ball_9):
+    global game_over, foul, resetting_cue_ball, current_player
+
+    check_foul(cue_ball, ball_3, ball_9)
+
+    # Reset collision data
+    cue_ball.collision_order.clear()
+    ball_3.collision_order.clear()
+    ball_9.collision_order.clear()
+
+    if foul:
+        resetting_cue_ball = True
+        if not ball_9.in_game:
+            ball_9.spot([cue_ball, ball_3])  # Spot the 9-ball if it was pocketed on a foul
+    elif not ball_9.in_game:
+        game_over = True
+        print("Game Over! Player", current_player, "wins!")
+        reset_game(cue_ball, ball_3, ball_9)
+    else:
+        current_player = 3 - current_player  # Switch player if no foul and game not over
+
+    # Always reset the cue ball if it's not in game (pocketed)
+    if not cue_ball.in_game:
+        cue_ball.reset()
+        
+def reset_game(cue_ball, ball_3, ball_9):
+    global game_over, foul, resetting_cue_ball, current_player
+    game_over = False
+    foul = False
+    resetting_cue_ball = False
+    current_player = 1
+    cue_ball.reset()
+    ball_3.reset()
+    ball_9.reset()
+
+def is_valid_cue_position(x, y, cue_ball, other_balls):
+    if (x < EDGE_WIDTH + cue_ball.radius or 
+        x > WIDTH - EDGE_WIDTH - cue_ball.radius or 
+        y < EDGE_WIDTH + cue_ball.radius or 
+        y > HEIGHT - EDGE_WIDTH - cue_ball.radius):
+        return False
+
+    for ball in other_balls:
+        if ball.in_game:
+            distance = math.sqrt((x - ball.x)**2 + (y - ball.y)**2)
+            if distance < cue_ball.radius + ball.radius:
+                return False
+
+    return True
+    
 
 buffer_height=POCKET_RADIUS
 # Main loop
@@ -248,30 +319,57 @@ stick = Stick()
 # Main game loop modifications
 running = True
 mouse_pressed = False
-shot_ready = False  # New flag to control shot release
+shot_ready = False
+resetting_cue_ball = False
+ball_placement_confirmed = False
+shot_taken = False
+current_player = 1
+foul = False
+game_over = False
 
+# Main game loop
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if ball.speed_x == 0 and ball.speed_y == 0:  # Only allow shot if ball is stationary
-                mouse_pressed = True
-                stick.start_charging()
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+
+            if resetting_cue_ball:
+                # Ball placement logic
+                if is_valid_cue_position(mouse_x, mouse_y, ball, [yellow_ball, red_ball]):
+                    ball.x, ball.y = mouse_x, mouse_y
+                    ball_placement_confirmed = True
+                    print("Ball placement confirmed")
+
+            elif ball.speed_x == 0 and ball.speed_y == 0 and not resetting_cue_ball:
+                # Shot preparation
+                if ball.in_game:
+                    mouse_pressed = True
+                    stick.start_charging()
 
         elif event.type == pygame.MOUSEBUTTONUP:
-            if ball.speed_x == 0 and ball.speed_y == 0:
+            if resetting_cue_ball and ball_placement_confirmed:
+                # Confirm ball placement
+                resetting_cue_ball = False
+                ball_placement_confirmed = False
+                foul = False
+                shot_taken = False
+                print("Ready to shoot")
+
+            elif mouse_pressed and ball.speed_x == 0 and ball.speed_y == 0 and not resetting_cue_ball:
+                # Shot release
                 mouse_pressed = False
                 shot_ready = True
 
     # Get current mouse position
     mouse_pos = pygame.mouse.get_pos()
 
-    # Update ball position
+    # Update ball positions
     ball.move([red_ball, yellow_ball])
     yellow_ball.move([ball, red_ball])
     red_ball.move([ball, yellow_ball])
-
 
     # Update stick power if mouse is pressed
     if mouse_pressed and ball.speed_x == 0 and ball.speed_y == 0:
@@ -287,9 +385,9 @@ while running:
             shot_ready = True
 
     # Check if shot is ready to be released
-    if shot_ready and ball.speed_x == 0 and ball.speed_y == 0:
+    if shot_ready and ball.speed_x == 0 and ball.speed_y == 0 and not shot_taken:
         # Get current mouse position for shot direction
-        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_x, mouse_y = mouse_pos
 
         # Calculate velocity based on opposite direction of stick
         angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
@@ -304,29 +402,45 @@ while running:
         stick.reset_charge()
         # Reset shot ready flag
         shot_ready = False
-        # Reset mouse press
-        mouse_pressed = False
+        # Mark shot as taken
+        shot_taken = True
+
+    # Check for game logic after all balls have stopped
+    if are_all_balls_stopped([ball, yellow_ball, red_ball]) and shot_taken:
+        handle_game_logic(ball, red_ball, yellow_ball)
+        shot_taken = False
 
     # Draw everything
     draw_pool_table()
     ball.draw(screen)
     yellow_ball.draw(screen)
     red_ball.draw(screen)
-    
-    def are_all_balls_stopped(balls):
-        return all(ball.speed_x == 0 and ball.speed_y == 0 for ball in balls if ball.in_game)
-        
-    if ball.speed_x == 0 and ball.speed_y == 0:
-        # In the drawing section
+
+    # Ball placement visualization during reset
+    if resetting_cue_ball:
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        if is_valid_cue_position(mouse_x, mouse_y, ball, [yellow_ball, red_ball]):
+            temp_surface = pygame.Surface((ball.radius*2, ball.radius*2), pygame.SRCALPHA)
+            pygame.draw.circle(temp_surface, (200, 200, 200, 128), (ball.radius, ball.radius), ball.radius)
+            screen.blit(temp_surface, (mouse_x - ball.radius, mouse_y - ball.radius))
+
+    # Draw stick when ball is stationary
+    if ball.speed_x == 0 and ball.speed_y == 0 and not resetting_cue_ball:
         if are_all_balls_stopped([ball, yellow_ball, red_ball]) and ball.in_game:
-            
             stick.visible = True
-            # Pass angle to draw method for power indicator positioning
             mouse_x, mouse_y = mouse_pos
             angle = math.atan2(mouse_y - ball.y, mouse_x - ball.x)
             stick.draw(screen, ball, mouse_pos, angle)
 
-    pygame.display.flip()
-    pygame.time.Clock().tick(60)  # Limit to 60 FPS
+    # Display current player and foul status
+    font = pygame.font.Font(None, 36)
+    player_text = font.render(f"Player {current_player}", True, (255, 255, 255))
+    screen.blit(player_text, (10, 10))
+    if foul:
+        foul_text = font.render("FOUL", True, (255, 0, 0))
+        screen.blit(foul_text, (WIDTH - 100, 10))
 
-pygame.quit()    
+    pygame.display.flip()
+    pygame.time.Clock().tick(60)
+
+pygame.quit()
