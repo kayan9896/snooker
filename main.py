@@ -1,6 +1,6 @@
 import pygame
 import math
-from ball2 import Ball
+from ball import Ball
 from stick import Stick
 # Initialize Pygame
 pygame.init()
