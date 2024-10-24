@@ -26,7 +26,6 @@ class Ball:
         self.initial_y = y
         self.foot_spot_x = width - edge_width - (width - edge_width * 2 - pocket_radius * 2) / 8 * 2
         self.foot_spot_y = height / 2
-        self.was_in_game = True
         self.number=number
         
     def spot(self, other_balls):
@@ -54,8 +53,6 @@ class Ball:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
 
     def move(self, other_balls=None):
-        self.was_in_game = self.in_game  # Store the previous state
-        # Only move if the ball is in the game
         if not self.in_game:
             return
         
