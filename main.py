@@ -346,18 +346,14 @@ def check_foul(cue_ball, numbered_balls):
         foul = True
         print("Foul: No ball hit")
         return
-
-    # If current_target_ball is 9 and ball 8 was just pocketed, no need to check for hitting ball 8
-    if current_target_ball == 8 and not numbered_balls[7].in_game and not numbered_balls[7].was_in_game:
-        current_target_ball = 9
-
+    
     # Check if the first ball hit was the current target ball
     first_hit = cue_ball.collision_order[0]
     if first_hit.number != current_target_ball:
         foul = True
         print(f"Foul: Ball {current_target_ball} not hit first")
 
-ball_left = 9 
+ball_left = 9  # Initialize at the start of the game
 
 def handle_game_logic(cue_ball, numbered_balls):
     global game_over, foul, resetting_cue_ball, current_player, current_target_ball, ball_left
@@ -409,11 +405,12 @@ def reset_game(cue_ball, numbered_balls):
     resetting_cue_ball = False
     current_player = 1
     current_target_ball = 1
-    ball_left = 9  =
+    ball_left = 9  # Reset ball count
 
     cue_ball.reset()
     for ball in numbered_balls:
         ball.reset()
+
     setup_rack()
 
 def is_valid_cue_position(x, y, cue_ball, other_balls):
@@ -430,9 +427,9 @@ def is_valid_cue_position(x, y, cue_ball, other_balls):
                 return False
 
     return True
+    
 
-
-setup_rack() 
+setup_rack()  # Call this at the start of the game
 stick = Stick()
 
 # Main game loop modifications
