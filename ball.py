@@ -2,7 +2,7 @@ import pygame
 import math
 
 class Ball:
-    def __init__(self, x, y, radius, color, width, height, edge_width, pocket_radius, offset, acceleration, resetable=True):
+    def __init__(self, x, y, radius, color, width, height, edge_width, pocket_radius, offset, acceleration, resetable=True,number=0):
         self.x = x
         self.y = y
         self.radius = radius
@@ -26,7 +26,9 @@ class Ball:
         self.initial_y = y
         self.foot_spot_x = width - edge_width - (width - edge_width * 2 - pocket_radius * 2) / 8 * 2
         self.foot_spot_y = height / 2
-
+        self.was_in_game = True
+        self.number=number
+        
     def spot(self, other_balls):
         self.x = self.foot_spot_x
         self.y = self.foot_spot_y
@@ -52,10 +54,11 @@ class Ball:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
 
     def move(self, other_balls=None):
+        self.was_in_game = self.in_game  # Store the previous state
         # Only move if the ball is in the game
         if not self.in_game:
             return
-
+        
         # Update speed based on acceleration
         self.speed_x = self.update_speed(self.speed_x, self.acceleration_x)
         self.speed_y = self.update_speed(self.speed_y, self.acceleration_y)
@@ -115,7 +118,7 @@ class Ball:
         distance = math.sqrt(dx**2 + dy**2)
 
         # Check if balls are colliding
-        if distance <= (self.radius + other_ball.radius):
+        if distance <= (self.radius + other_ball.radius)+0.1:
             if self.color==(255,255,255):
                 self.collision_order.append(other_ball)
                 other_ball.collision_order.append(self)
@@ -155,7 +158,7 @@ class Ball:
             other_ball.acceleration_y = other_ball.acceleration * abs(math.sin(angle))
 
             # Separate balls to prevent sticking
-            overlap = self.radius + other_ball.radius - distance
+            overlap = self.radius + other_ball.radius - distance+0.1
             self.x -= overlap/2 * math.cos(angle)
             self.y -= overlap/2 * math.sin(angle)
             other_ball.x += overlap/2 * math.cos(angle)
