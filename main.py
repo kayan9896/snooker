@@ -309,23 +309,6 @@ def setup_rack():
     remaining_ball.x = apex_x + row_offset * 2
     remaining_ball.y = apex_y  # Same height as 9 ball
 
-    
-# Add stripe to 9 ball
-def draw_ball_with_stripe(screen, ball):
-    # Draw base ball
-    pygame.draw.circle(screen, ball.color, (int(ball.x), int(ball.y)), ball.radius)
-
-    if ball.number == 9:  # Add white stripe to 9 ball
-        stripe_rect = pygame.Rect(
-            ball.x - ball.radius,
-            ball.y - ball.radius/3,
-            ball.radius * 2,
-            ball.radius * 2/3
-        )
-        pygame.draw.rect(screen, WHITE, stripe_rect)
-        # Redraw the outline
-        pygame.draw.circle(screen, ball.color, (int(ball.x), int(ball.y)), ball.radius, 1)
-
 # Modify the main game loop to handle all balls
 def are_all_balls_stopped(balls):
     return all(ball.speed_x == 0 and ball.speed_y == 0 for ball in balls if ball.in_game)
@@ -381,19 +364,19 @@ def handle_game_logic(cue_ball, numbered_balls):
         print("Game Over! Player", current_player, "wins!")
         reset_game(cue_ball, numbered_balls)
     else:
-        # Update current_target_ball if the current target was pocketed
-        if not numbered_balls[current_target_ball - 1].in_game:
-            # Find next target ball
-            for i in range(current_target_ball, 10):
-                if i == 9 or numbered_balls[i - 1].in_game:
-                    current_target_ball = i
-                    print(f"New target ball: {current_target_ball}")
-                    break
-
         # Switch player if no balls were pocketed on this shot
         if not any_ball_pocketed:
             current_player = 3 - current_player
             print(f"No balls pocketed. Switching to Player {current_player}")
+
+    # Update current_target_ball if the current target was pocketed
+    if not numbered_balls[current_target_ball - 1].in_game:
+        # Find next target ball
+        for i in range(current_target_ball, 10):
+            if i == 9 or numbered_balls[i - 1].in_game:
+                current_target_ball = i
+                print(f"New target ball: {current_target_ball}")
+                break
 
     if not cue_ball.in_game:
         cue_ball.reset()
@@ -541,10 +524,7 @@ while running:
     # Modify the drawing section:
     draw_pool_table()
     for ball in numbered_balls:
-        if ball.number == 9:
-            draw_ball_with_stripe(screen, ball)
-        else:
-            ball.draw(screen)
+        ball.draw(screen)
     cue_ball.draw(screen)
 
 
