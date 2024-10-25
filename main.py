@@ -246,7 +246,7 @@ balls = []
 cue_ball = Ball(EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2, 
                 EDGE_WIDTH + buffer_height + BALL_RADIUS, 
                 BALL_RADIUS, WHITE, WIDTH, HEIGHT, EDGE_WIDTH, POCKET_RADIUS, offset, 
-                acceleration=0.05, resetable=True, number=0)  # number=0 for cue ball
+                acceleration=0.05, number=0)  # number=0 for cue ball
 
 # Calculate the foot spot position
 foot_spot_x = WIDTH - EDGE_WIDTH - (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2
@@ -255,7 +255,7 @@ foot_spot_y = HEIGHT/2
 # Function to create a ball with number
 def create_numbered_ball(number, x, y):
     return Ball(x, y, BALL_RADIUS, BALL_COLORS[number], WIDTH, HEIGHT, EDGE_WIDTH, 
-                POCKET_RADIUS, offset, acceleration=0.05, resetable=False, number=number)
+                POCKET_RADIUS, offset, acceleration=0.05, number=number)
 
 # Create all numbered balls (1-9)
 numbered_balls = [create_numbered_ball(i, 0, 0) for i in range(1, 10)]
@@ -468,10 +468,11 @@ while running:
 
             if resetting_cue_ball:
                 # Ball placement logic
-                if is_valid_cue_position(mouse_x, mouse_y, cue_ball, numbered_balls):
+                if is_valid_cue_position(mouse_x, mouse_y, cue_ball, numbered_balls, is_initial_placement):
                     cue_ball.x, cue_ball.y = mouse_x, mouse_y
                     ball_placement_confirmed = True
                     print("Ball placement confirmed")
+                    if is_initial_placement: is_initial_placement = False
 
             elif cue_ball.speed_x == 0 and cue_ball.speed_y == 0 and not resetting_cue_ball:
                 # Shot preparation
@@ -559,7 +560,6 @@ while running:
             temp_surface = pygame.Surface((cue_ball.radius*2, cue_ball.radius*2), pygame.SRCALPHA)
             pygame.draw.circle(temp_surface, (200, 200, 200, 128), (cue_ball.radius, cue_ball.radius), cue_ball.radius)
             screen.blit(temp_surface, (mouse_x - cue_ball.radius, mouse_y - cue_ball.radius))
-        if is_initial_placement: is_initial_placement = False
 
     # Draw stick when ball is stationary
     if cue_ball.speed_x == 0 and cue_ball.speed_y == 0 and not resetting_cue_ball:
