@@ -50,6 +50,16 @@ class Ball:
     def draw(self, screen):
         if self.in_game:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+            if self.number == 9:  # Add white stripe to 9 ball
+                stripe_rect = pygame.Rect(
+                    self.x - self.radius,
+                    self.y - self.radius/3,
+                    self.radius * 2,
+                    self.radius * 2/3
+                )
+                pygame.draw.rect(screen, (255,255,255,64), stripe_rect)
+                # Redraw the outline
+                pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius, 1)
 
     def move(self, other_balls=None):
         if not self.in_game:
