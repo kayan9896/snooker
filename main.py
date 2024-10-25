@@ -494,6 +494,7 @@ while running:
         # Automatic shot release when max power is reached
         if stick.max_power_reached:
             shot_ready = True
+            mouse_pressed=False
 
     # Check if shot is ready to be released
     if shot_ready and cue_ball.speed_x == 0 and cue_ball.speed_y == 0 and not shot_taken:
@@ -517,6 +518,11 @@ while running:
         shot_taken = True
 
 
+    # Update all balls
+    cue_ball.move(numbered_balls)
+    for ball in numbered_balls:
+        ball.move([cue_ball] + [b for b in numbered_balls if b != ball])
+        
     # Modify the drawing section:
     draw_pool_table()
     for ball in numbered_balls:
@@ -526,10 +532,6 @@ while running:
             ball.draw(screen)
     cue_ball.draw(screen)
 
-    # Update all balls
-    cue_ball.move(numbered_balls)
-    for ball in numbered_balls:
-        ball.move([cue_ball] + [b for b in numbered_balls if b != ball])
 
     # Modify the game logic handling:
     if are_all_balls_stopped([cue_ball] + numbered_balls) and shot_taken:
