@@ -2,7 +2,7 @@ import pygame
 import math
 
 class Ball:
-    def __init__(self, x, y, radius, color, width, height, edge_width, pocket_radius, offset, acceleration, resetable=True,number=0):
+    def __init__(self, x, y, radius, color, width, height, edge_width, pocket_radius, offset, acceleration, number=0):
         self.x = x
         self.y = y
         self.radius = radius
@@ -20,7 +20,6 @@ class Ball:
         self.buffer_height = pocket_radius
         self.mass = 1  # Add mass for momentum calculations
         self.in_game = True  # New flag to control drawing and movement
-        self.resetable = resetable  # Flag to determine if ball can be reset
         self.collision_order = []
         self.initial_x = x
         self.initial_y = y
@@ -87,10 +86,7 @@ class Ball:
 
         for x, y in pocket_check_points:
             if self.check_pocket(x, y, self.pocket_radius + 8):
-                if self.resetable:
-                    self.reset()
-                else:
-                    self.in_game = False  # Remove the ball from the game
+                self.in_game = False  # Remove the ball from the game
                 break
 
         # Check for collisions with buffers
