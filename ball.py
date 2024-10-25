@@ -27,7 +27,7 @@ class Ball:
         self.foot_spot_x = width - edge_width - (width - edge_width * 2 - pocket_radius * 2) / 8 * 2
         self.foot_spot_y = height / 2
         self.number=number
-        
+
     def spot(self, other_balls):
         self.x = self.foot_spot_x
         self.y = self.foot_spot_y
@@ -55,7 +55,7 @@ class Ball:
     def move(self, other_balls=None):
         if not self.in_game:
             return
-        
+
         # Update speed based on acceleration
         self.speed_x = self.update_speed(self.speed_x, self.acceleration_x)
         self.speed_y = self.update_speed(self.speed_y, self.acceleration_y)
@@ -67,7 +67,7 @@ class Ball:
         if other_balls:
             for ball in other_balls:
                 if ball != self and ball.in_game:
-                    self.check_ball_collision(ball)
+                        self.check_ball_collision(ball)
 
 
         # Update acceleration based on current speed
@@ -115,7 +115,7 @@ class Ball:
         distance = math.sqrt(dx**2 + dy**2)
 
         # Check if balls are colliding
-        if distance <= (self.radius + other_ball.radius)+0.1:
+        if distance <= (self.radius + other_ball.radius):
             if self.color==(255,255,255):
                 self.collision_order.append(other_ball)
                 other_ball.collision_order.append(self)
@@ -145,21 +145,25 @@ class Ball:
             other_ball.speed_x = new_v2_parallel * math.cos(angle) - v2_perpendicular * math.sin(angle)
             other_ball.speed_y = new_v2_parallel * math.sin(angle) + v2_perpendicular * math.cos(angle)
 
-            # Update acceleration based on new velocities
-            angle = math.atan2(self.speed_y, self.speed_x)
-            self.acceleration_x = self.acceleration * abs(math.cos(angle))
-            self.acceleration_y = self.acceleration * abs(math.sin(angle))
+            
 
-            angle = math.atan2(other_ball.speed_y, other_ball.speed_x)
-            other_ball.acceleration_x = other_ball.acceleration * abs(math.cos(angle))
-            other_ball.acceleration_y = other_ball.acceleration * abs(math.sin(angle))
+            # Update acceleration based on new velocities
+            angle1 = math.atan2(self.speed_y, self.speed_x)
+            self.acceleration_x = self.acceleration * abs(math.cos(angle1))
+            self.acceleration_y = self.acceleration * abs(math.sin(angle1))
+
+            angle2 = math.atan2(other_ball.speed_y, other_ball.speed_x)
+            other_ball.acceleration_x = other_ball.acceleration * abs(math.cos(angle2))
+            other_ball.acceleration_y = other_ball.acceleration * abs(math.sin(angle2))
 
             # Separate balls to prevent sticking
-            overlap = self.radius + other_ball.radius - distance+0.1
+            overlap = self.radius + other_ball.radius - distance+0.01
             self.x -= overlap/2 * math.cos(angle)
             self.y -= overlap/2 * math.sin(angle)
             other_ball.x += overlap/2 * math.cos(angle)
             other_ball.y += overlap/2 * math.sin(angle)
+
+        
 
     def check_pocket(self, x, y, radius):
         return (self.x - x) ** 2 + (self.y - y) ** 2 <= radius ** 2
