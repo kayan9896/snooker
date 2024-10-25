@@ -399,13 +399,14 @@ def handle_game_logic(cue_ball, numbered_balls):
         cue_ball.reset()
 
 def reset_game(cue_ball, numbered_balls):
-    global game_over, foul, resetting_cue_ball, current_player, current_target_ball, ball_left
+    global game_over, foul, resetting_cue_ball, current_player, current_target_ball, ball_left, is_initial_placement
     game_over = False
     foul = False
-    resetting_cue_ball = False
+    resetting_cue_ball = True
     current_player = 1
     current_target_ball = 1
     ball_left = 9  # Reset ball count
+    is_initial_placement = True
 
     cue_ball.reset()
     for ball in numbered_balls:
@@ -413,13 +414,25 @@ def reset_game(cue_ball, numbered_balls):
 
     setup_rack()
 
-def is_valid_cue_position(x, y, cue_ball, other_balls):
-    if (x < EDGE_WIDTH + cue_ball.radius or 
-        x > WIDTH - EDGE_WIDTH - cue_ball.radius or 
-        y < EDGE_WIDTH + cue_ball.radius or 
-        y > HEIGHT - EDGE_WIDTH - cue_ball.radius):
+def is_valid_cue_position(x, y, cue_ball, other_balls, is_initial=False):
+    # Basic boundary checks
+    if (y < EDGE_WIDTH + buffer_height + cue_ball.radius or 
+        y > HEIGHT - EDGE_WIDTH - buffer_height - cue_ball.radius):
         return False
 
+    # For initial placement or breaking shot:
+    # Only allow placement in the "kitchen" (behind head string)
+    if is_initial:
+        head_string_x = EDGE_WIDTH + (WIDTH-EDGE_WIDTH*2-POCKET_RADIUS*2)/8 * 2
+        if x > head_string_x or x < EDGE_WIDTH + buffer_height + cue_ball.radius:
+            return False
+    else:
+        # Regular reset: allow placement anywhere on the table
+        if (x < EDGE_WIDTH + buffer_height + cue_ball.radius or 
+            x > WIDTH - EDGE_WIDTH - buffer_height - cue_ball.radius):
+            return False
+
+    # Check collision with other balls
     for ball in other_balls:
         if ball.in_game:
             distance = math.sqrt((x - ball.x)**2 + (y - ball.y)**2)
@@ -436,12 +449,13 @@ stick = Stick()
 running = True
 mouse_pressed = False
 shot_ready = False
-resetting_cue_ball = False
+resetting_cue_ball = True
 ball_placement_confirmed = False
 shot_taken = False
 current_player = 1
 foul = False
 game_over = False
+is_initial_placement = True
 
 # Main game loop
 while running:
@@ -541,10 +555,11 @@ while running:
     # Ball placement visualization during reset
     if resetting_cue_ball:
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        if is_valid_cue_position(mouse_x, mouse_y, cue_ball, numbered_balls):
+        if is_valid_cue_position(mouse_x, mouse_y, cue_ball, numbered_balls,is_initial_placement):
             temp_surface = pygame.Surface((cue_ball.radius*2, cue_ball.radius*2), pygame.SRCALPHA)
             pygame.draw.circle(temp_surface, (200, 200, 200, 128), (cue_ball.radius, cue_ball.radius), cue_ball.radius)
             screen.blit(temp_surface, (mouse_x - cue_ball.radius, mouse_y - cue_ball.radius))
+        if is_initial_placement: is_initial_placement = False
 
     # Draw stick when ball is stationary
     if cue_ball.speed_x == 0 and cue_ball.speed_y == 0 and not resetting_cue_ball:
