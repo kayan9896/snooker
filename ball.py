@@ -26,6 +26,15 @@ class Ball:
         self.foot_spot_x = width - edge_width - (width - edge_width * 2 - pocket_radius * 2) / 8 * 2
         self.foot_spot_y = height / 2
         self.number=number
+        self.top_spin = 0.0    # Range: -1.0 (back spin) to 1.0 (top spin)
+        self.side_spin = 0.0   # Range: -1.0 (left spin) to 1.0 (right spin)
+        self.spin_decay = 0.98 # Spin decay factor
+        self.spin_effect_strength = 0.3 # Adjustable coefficient for spin effects
+        self.friction_coefficient = 0.015  # Table friction coefficient
+        self.rolling_resistance = 0.01  # Rolling resistance coefficient
+        self.spin_transfer_rate = 0.2
+        #self.rolling_resistance = 0.008    # Rolling resistance coefficient
+        self.minimum_speed = 0.01
 
     def spot(self, other_balls):
         self.x = self.foot_spot_x
@@ -61,9 +70,65 @@ class Ball:
                 # Redraw the outline
                 pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius, 1)
 
+    def apply_spin_effects(self):
+        if not self.in_game:
+            return
+
+        current_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
+        if current_speed < self.minimum_speed:
+            self.speed_x = 0
+            self.speed_y = 0
+            return
+
+        # Calculate direction unit vectors
+        direction_x = self.speed_x / current_speed
+        direction_y = self.speed_y / current_speed
+
+        # Calculate friction force based on spin
+        # Back spin increases friction, top spin reduces it
+        friction_modifier = 1.0 - (self.top_spin * 0.3)  # 30% maximum effect
+        effective_friction = self.friction_coefficient * friction_modifier
+
+        # Apply basic friction deceleration
+        friction_decel = effective_friction * 9.81  # g = 9.81 m/s²
+
+        # Calculate spin-induced forces
+        if self.top_spin != 0:
+            # Top spin effect (forward rolling)
+            rolling_bonus = self.top_spin * self.rolling_resistance * current_speed
+            self.speed_x += direction_x * rolling_bonus
+            self.speed_y += direction_y * rolling_bonus
+
+        # Apply side spin (curved path)
+        if self.side_spin != 0:
+            # Calculate perpendicular direction for curve
+            perpendicular_x = -direction_y
+            perpendicular_y = direction_x
+
+            # Apply curved motion (proportional to current speed)
+            curve_force = self.side_spin * 0.02 * current_speed
+            self.speed_x += perpendicular_x * curve_force
+            self.speed_y += perpendicular_y * curve_force
+
+        # Apply friction deceleration
+        if current_speed > friction_decel:
+            self.speed_x -= direction_x * friction_decel
+            self.speed_y -= direction_y * friction_decel
+        else:
+            self.speed_x = 0
+            self.speed_y = 0
+
+        # Decay spin effects
+        self.top_spin *= self.spin_decay
+        self.side_spin *= self.spin_decay
+
+
     def move(self, other_balls=None):
         if not self.in_game:
             return
+
+        # Apply spin effects before regular movement
+        self.apply_spin_effects()
 
         # Update speed based on acceleration
         self.speed_x = self.update_speed(self.speed_x, self.acceleration_x)
@@ -123,6 +188,16 @@ class Ball:
         # Check if balls are colliding
         if distance <= (self.radius + other_ball.radius):
             if self.color==(255,255,255):
+
+                # Transfer some spin to the target ball
+                spin_transfer = 0.3  # 30% spin transfer
+                other_ball.top_spin = self.top_spin * spin_transfer
+                other_ball.side_spin = self.side_spin * spin_transfer
+
+                # Reduce cue ball spin after collision
+                self.top_spin *= (1 - spin_transfer)
+                self.side_spin *= (1 - spin_transfer)
+
                 self.collision_order.append(other_ball)
                 other_ball.collision_order.append(self)
                 print([i.color for i in self.collision_order])
@@ -151,7 +226,7 @@ class Ball:
             other_ball.speed_x = new_v2_parallel * math.cos(angle) - v2_perpendicular * math.sin(angle)
             other_ball.speed_y = new_v2_parallel * math.sin(angle) + v2_perpendicular * math.cos(angle)
 
-            
+
 
             # Update acceleration based on new velocities
             angle1 = math.atan2(self.speed_y, self.speed_x)
@@ -169,7 +244,7 @@ class Ball:
             other_ball.x += overlap/2 * math.cos(angle)
             other_ball.y += overlap/2 * math.sin(angle)
 
-        
+
 
     def check_pocket(self, x, y, radius):
         return (self.x - x) ** 2 + (self.y - y) ** 2 <= radius ** 2
