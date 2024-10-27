@@ -521,7 +521,7 @@ class Game:
         elif not self.numbered_balls[8].in_game:
             self.game_over = True
             self.add_message(f"Game Over! Player {self.current_player} wins!")
-            self.reset_game()
+            self.reset_game(self.cue_ball, self.numbered_balls)
         else:
             if not any_ball_pocketed:
                 self.current_player = 3 - self.current_player
@@ -667,8 +667,8 @@ class Game:
                 self.cue_ball.speed_x = self.stick.power * math.cos(angle)
                 self.cue_ball.speed_y = self.stick.power * math.sin(angle)
 
-                self.cue_ball.top_spin = self.current_spin[0]
-                self.cue_ball.side_spin = self.current_spin[1]
+                self.cue_ball.top_spin = self.current_spin[0]*self.stick.power/25
+                self.cue_ball.side_spin = self.current_spin[1]*self.stick.power/25
                 
                 # Hide self.stick after shot
                 self.stick.visible = False
