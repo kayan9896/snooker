@@ -30,11 +30,11 @@ class Ball:
         self.side_spin = 0.0   # Range: -1.0 (left spin) to 1.0 (right spin)
         self.spin_decay = 0.98 # Spin decay factor
         self.spin_effect_strength = 0.3 # Adjustable coefficient for spin effects
-        self.friction_coefficient = 0.015  # Table friction coefficient
-        self.rolling_resistance = 0.01  # Rolling resistance coefficient
-        self.spin_transfer_rate = 0.2
-        #self.rolling_resistance = 0.008    # Rolling resistance coefficient
-        self.minimum_speed = 0.01
+        self.rotational_speed_x = 0.0  # Rotational velocity in x direction
+        self.rotational_speed_y = 0.0  # Rotational velocity in y direction
+        self.sliding_acceleration = acceleration  # Sliding friction
+        self.rotational_acceleration = acceleration * 0.1  # Much smaller for rotation
+        self.initial_angle = 0.0  # Store initial direction of motion
 
     def spot(self, other_balls):
         self.x = self.foot_spot_x
@@ -74,68 +74,86 @@ class Ball:
         if not self.in_game:
             return
 
-        current_speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
-        if current_speed < self.minimum_speed:
-            self.speed_x = 0
-            self.speed_y = 0
-            return
+        # Handle top/back spin as before
+        if self.top_spin != 0 and self.rotational_speed_x == 0 and self.rotational_speed_y == 0:
+            velocity_mag = math.sqrt(self.speed_x**2 + self.speed_y**2)
+            if velocity_mag > 0:
+                self.initial_angle = math.atan2(self.speed_y, self.speed_x)
+                rotational_magnitude = abs(self.top_spin) * 3
+                self.rotational_speed_x = rotational_magnitude * math.cos(self.initial_angle)
+                self.rotational_speed_y = rotational_magnitude * math.sin(self.initial_angle)
+                if self.top_spin < 0:
+                    self.rotational_speed_x *= -1
+                    self.rotational_speed_y *= -1
+                self.top_spin=0
 
-        # Calculate direction unit vectors
-        direction_x = self.speed_x / current_speed
-        direction_y = self.speed_y / current_speed
+        # Handle side spin
+        # Handle side spin - initial deflection when speed is first applied
+        velocity_mag = math.sqrt(self.speed_x**2 + self.speed_y**2)
+        if velocity_mag > 0 and self.side_spin != 0:
+            if not hasattr(self, 'initial_target_angle'):
+                # Store the initial target angle when spin is first applied
+                self.initial_target_angle = math.atan2(self.speed_y, self.speed_x)
 
-        # Calculate friction force based on spin
-        # Back spin increases friction, top spin reduces it
-        friction_modifier = 1.0 - (self.top_spin * 0.3)  # 30% maximum effect
-        effective_friction = self.friction_coefficient * friction_modifier
+                # Apply initial deflection
+                deflection_angle = math.asin(self.side_spin) # Adjust for initial deflection
+                # Negative side spin (left) starts right of target line
+                # Positive side spin (right) starts left of target line
+                new_angle = self.initial_target_angle - deflection_angle
+                print(deflection_angle,self.speed_x,self.speed_y)
+                # Set new velocity direction while maintaining magnitude
+                self.speed_x = velocity_mag * math.cos(new_angle)
+                self.speed_y = velocity_mag * math.sin(new_angle)
+                print(self.speed_x,self.speed_y)
+            else:
+                # Calculate current angle
+                current_angle = math.atan2(self.speed_y, self.speed_x)
 
-        # Apply basic friction deceleration
-        friction_decel = effective_friction * 9.81  # g = 9.81 m/s²
+                # Calculate angle to target line
+                angle_to_target = self.initial_target_angle - current_angle
 
-        # Calculate spin-induced forces
-        if self.top_spin != 0:
-            # Top spin effect (forward rolling)
-            rolling_bonus = self.top_spin * self.rolling_resistance * current_speed
-            self.speed_x += direction_x * rolling_bonus
-            self.speed_y += direction_y * rolling_bonus
+                # Apply curve force toward target line
+                curve_strength = 0.05  # Adjust for curve intensity
+               
+                # Apply rotational force to curve back to target line
+                rotation_angle = curve_strength * math.asin(self.side_spin)
+                new_speed_x = self.speed_x * math.cos(rotation_angle) - self.speed_y * math.sin(rotation_angle)
+                new_speed_y = self.speed_x * math.sin(rotation_angle) + self.speed_y * math.cos(rotation_angle)
 
-        # Apply side spin (curved path)
-        if self.side_spin != 0:
-            # Calculate perpendicular direction for curve
-            perpendicular_x = -direction_y
-            perpendicular_y = direction_x
-
-            # Apply curved motion (proportional to current speed)
-            curve_force = self.side_spin * 0.02 * current_speed
-            self.speed_x += perpendicular_x * curve_force
-            self.speed_y += perpendicular_y * curve_force
-
-        # Apply friction deceleration
-        if current_speed > friction_decel:
-            self.speed_x -= direction_x * friction_decel
-            self.speed_y -= direction_y * friction_decel
-        else:
-            self.speed_x = 0
-            self.speed_y = 0
-
-        # Decay spin effects
-        self.top_spin *= self.spin_decay
-        self.side_spin *= self.spin_decay
-
+                # Normalize to maintain speed
+                current_mag = math.sqrt(new_speed_x**2 + new_speed_y**2)
+                self.speed_x = new_speed_x * velocity_mag / current_mag
+                self.speed_y = new_speed_y * velocity_mag / current_mag
+        else: 
+            if hasattr(self, 'initial_target_angle'): del self.initial_target_angle
+    
 
     def move(self, other_balls=None):
         if not self.in_game:
             return
 
-        # Apply spin effects before regular movement
         self.apply_spin_effects()
 
-        # Update speed based on acceleration
-        self.speed_x = self.update_speed(self.speed_x, self.acceleration_x)
-        self.speed_y = self.update_speed(self.speed_y, self.acceleration_y)
+        # Update translational speeds with sliding friction
+        velocity_mag = math.sqrt(self.speed_x**2 + self.speed_y**2)
+        if velocity_mag > 0:
+            angle = math.atan2(self.speed_y, self.speed_x)
+            acc_x = self.sliding_acceleration * abs(math.cos(angle))
+            acc_y = self.sliding_acceleration * abs(math.sin(angle))
+            self.speed_x = self.update_speed(self.speed_x, acc_x)
+            self.speed_y = self.update_speed(self.speed_y, acc_y)
 
-        self.x += self.speed_x
-        self.y += self.speed_y
+        # Update rotational speeds with rotational friction
+        rotational_mag = math.sqrt(self.rotational_speed_x**2 + self.rotational_speed_y**2)
+        if rotational_mag > 0:
+            rot_acc_x = self.rotational_acceleration * abs(math.cos(self.initial_angle))
+            rot_acc_y = self.rotational_acceleration * abs(math.sin(self.initial_angle))
+            self.rotational_speed_x = self.update_speed(self.rotational_speed_x, rot_acc_x)
+            self.rotational_speed_y = self.update_speed(self.rotational_speed_y, rot_acc_y)
+
+        # Update position using both translational and rotational velocities
+        self.x += self.speed_x + self.rotational_speed_x
+        self.y += self.speed_y + self.rotational_speed_y
 
         # Check for collisions with other balls before moving
         if other_balls:
@@ -167,17 +185,54 @@ class Ball:
         # Check for collisions with buffers
         if self.x < self.edge_width + self.buffer_height + self.radius:
             self.x = self.edge_width + self.buffer_height + self.radius
-            self.speed_x = -self.speed_x
+            self.speed_x = -self.speed_x  # Normal rebound
+            if self.side_spin != 0:
+                # Add velocity in the direction parallel to the rail (y direction)
+                self.speed_y -= self.side_spin*3 * abs(self.speed_x)  # More spin effect for faster hits
+                self.side_spin*=0.3
+            self.rotational_speed_x = -self.rotational_speed_x
+            # Update initial angle to reflect new rotation direction
+            self.initial_angle = math.pi - self.initial_angle
+
+            
+
         elif self.x > self.width - self.edge_width - self.buffer_height - self.radius:
             self.x = self.width - self.edge_width - self.buffer_height - self.radius
             self.speed_x = -self.speed_x
+            if self.side_spin != 0:
+                self.speed_y += self.side_spin *3* abs(self.speed_x)
+                self.side_spin*=0.3
+            self.rotational_speed_x = -self.rotational_speed_x
+            self.initial_angle = math.pi - self.initial_angle
 
         if self.y < self.edge_width + self.buffer_height + self.radius:
             self.y = self.edge_width + self.buffer_height + self.radius
             self.speed_y = -self.speed_y
+            if self.side_spin != 0:
+                self.speed_x += self.side_spin *3* abs(self.speed_y)
+                self.side_spin*=0.3
+            self.rotational_speed_y = -self.rotational_speed_y
+            # Update initial angle to reflect new rotation direction
+            self.initial_angle = -self.initial_angle
+
         elif self.y > self.height - self.edge_width - self.buffer_height - self.radius:
             self.y = self.height - self.edge_width - self.buffer_height - self.radius
             self.speed_y = -self.speed_y
+            if self.side_spin != 0:
+                self.speed_x -= self.side_spin *3* abs(self.speed_y)
+                self.side_spin*=0.3
+            self.rotational_speed_y = -self.rotational_speed_y
+            self.initial_angle = -self.initial_angle
+
+        # Optional: Add some energy loss during buffer collision
+        buffer_absorption = 0.8  # Adjust this value to control energy loss
+        if self.x <= self.edge_width + self.buffer_height + self.radius or \
+           self.x >= self.width - self.edge_width - self.buffer_height - self.radius or \
+           self.y <= self.edge_width + self.buffer_height + self.radius or \
+           self.y >= self.height - self.edge_width - self.buffer_height - self.radius:
+            self.rotational_speed_x *= buffer_absorption
+            self.rotational_speed_y *= buffer_absorption
+            
 
     def check_ball_collision(self, other_ball):
         # Calculate distance between ball centers
@@ -226,8 +281,24 @@ class Ball:
             other_ball.speed_x = new_v2_parallel * math.cos(angle) - v2_perpendicular * math.sin(angle)
             other_ball.speed_y = new_v2_parallel * math.sin(angle) + v2_perpendicular * math.cos(angle)
 
+            # After calculating new velocities, modify them based on spin
+            if abs(self.side_spin) > 0:
+                # Deflection angle modified by side spin
+                spin_deflection = self.side_spin * 0.2
+                deflection_angle = math.atan2(self.speed_y, self.speed_x) + spin_deflection
+                velocity_mag = math.sqrt(self.speed_x**2 + self.speed_y**2)
+                self.speed_x = velocity_mag * math.cos(deflection_angle)
+                self.speed_y = velocity_mag * math.sin(deflection_angle)
 
+            # Transfer some spin to the other ball
+            other_ball.top_spin += self.top_spin * 0.3
+            other_ball.side_spin += self.side_spin * 0.3
 
+            # Reduce spin after collision
+            self.top_spin *= 0.7
+            self.side_spin *= 0.7
+
+            
             # Update acceleration based on new velocities
             angle1 = math.atan2(self.speed_y, self.speed_x)
             self.acceleration_x = self.acceleration * abs(math.cos(angle1))
