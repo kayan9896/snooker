@@ -4,18 +4,28 @@ from game import Game
 
 def main():
     pygame.init()
-    WIDTH, HEIGHT = 800, 400
+    WIDTH, HEIGHT = 800, 600
 
-    menu = Menu(WIDTH, HEIGHT)
-    selected_mode = menu.run()
+    running = True
+    current_screen = "menu"
 
-    if selected_mode == "practice":
-        game = Game()
-        game.run()
-    elif selected_mode == "ai":
-        print("AI mode not implemented yet")
-    elif selected_mode == "online":
-        print("Online mode not implemented yet")
+    while running:
+        if current_screen == "menu":
+            menu = Menu(WIDTH, HEIGHT)
+            current_screen = menu.run()
+        elif current_screen == "practice":
+            game = Game()
+            current_screen = game.run()
+        elif current_screen == "quit":
+            running = False
+        elif current_screen == "ai":
+            print("AI mode not implemented yet")
+            current_screen = "menu"
+        elif current_screen == "online":
+            print("Online mode not implemented yet")
+            current_screen = "menu"
+
+    pygame.quit()
 
 if __name__ == "__main__":
     main()
