@@ -33,7 +33,7 @@ class Ball:
         self.rotational_speed_x = 0.0  # Rotational velocity in x direction
         self.rotational_speed_y = 0.0  # Rotational velocity in y direction
         self.sliding_acceleration = acceleration  # Sliding friction
-        self.rotational_acceleration = acceleration * 0.1  # Much smaller for rotation
+        self.rotational_acceleration = acceleration * 0.2  # Much smaller for rotation
         self.initial_angle = 0.0  # Store initial direction of motion
 
     def spot(self, other_balls):
@@ -114,7 +114,7 @@ class Ball:
 
                 # Apply curve force toward target line
                 curve_strength = 0.05  # Adjust for curve intensity
-               
+
                 # Apply rotational force to curve back to target line
                 rotation_angle = curve_strength * math.asin(self.side_spin)
                 new_speed_x = self.speed_x * math.cos(rotation_angle) - self.speed_y * math.sin(rotation_angle)
@@ -126,7 +126,7 @@ class Ball:
                 self.speed_y = new_speed_y * velocity_mag / current_mag
         else: 
             if hasattr(self, 'initial_target_angle'): del self.initial_target_angle
-    
+
 
     def move(self, other_balls=None):
         if not self.in_game:
@@ -194,7 +194,7 @@ class Ball:
             # Update initial angle to reflect new rotation direction
             self.initial_angle = math.pi - self.initial_angle
 
-            
+
 
         elif self.x > self.width - self.edge_width - self.buffer_height - self.radius:
             self.x = self.width - self.edge_width - self.buffer_height - self.radius
@@ -232,7 +232,7 @@ class Ball:
            self.y >= self.height - self.edge_width - self.buffer_height - self.radius:
             self.rotational_speed_x *= buffer_absorption
             self.rotational_speed_y *= buffer_absorption
-            
+
 
     def check_ball_collision(self, other_ball):
         # Calculate distance between ball centers
@@ -298,7 +298,7 @@ class Ball:
             self.top_spin *= 0.7
             self.side_spin *= 0.7
 
-            
+
             # Update acceleration based on new velocities
             angle1 = math.atan2(self.speed_y, self.speed_x)
             self.acceleration_x = self.acceleration * abs(math.cos(angle1))
@@ -333,5 +333,7 @@ class Ball:
         self.y = self.initial_y
         self.speed_x = 0
         self.speed_y = 0
+        self.rotational_speed_x = 0.0  
+        self.rotational_speed_y = 0.0 
         self.in_game = True
         self.collision_order.clear()
