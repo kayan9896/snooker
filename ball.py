@@ -69,14 +69,7 @@ class Ball:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
             
 
-            if self.number == 9:  # Add white stripe to 9 ball
-                stripe_rect = pygame.Rect(
-                    self.x - self.radius,
-                    self.y - self.radius/3,
-                    self.radius * 2,
-                    self.radius * 2/3
-                )
-                pygame.draw.rect(screen, (0,0,0,32), stripe_rect)
+            
                 # Redraw the outline
                 #pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius, 1)
                 
@@ -85,11 +78,20 @@ class Ball:
                 speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
                 self.rotation_speed = speed * 0.1  # Adjust this multiplier to change rotation speed
                 self.number_angle += self.rotation_speed
+                if self.number == 9:  # Add white stripe to 9 ball
+                    stripe_rect = pygame.Rect(
+                        self.x - self.radius*math.cos(self.number_angle),
+                        self.y - self.radius/3*math.cos(self.number_angle),
+                        self.radius * 2*math.cos(self.number_angle),
+                        self.radius * 2/3*math.cos(self.number_angle)
+                    )
+                    pygame.draw.rect(screen, (0,0,0,32), stripe_rect)
+                if speed==0: self.number_angle=0
 
                 # Calculate number visibility based on rotation
                 visibility = abs(math.cos(self.number_angle))
 
-                if visibility > 0.3:  # Only draw if sufficiently visible
+                if visibility > 0.5:  # Only draw if sufficiently visible
                     # Create number text
                     
                     number_text = self.font.render(str(self.number), True, (0, 0, 0))
@@ -98,7 +100,7 @@ class Ball:
                     # Scale the text based on visibility
                     scaled_width = int(number_rect.width * visibility)
                     scaled_height = int(number_rect.height * visibility)
-                    scaled_inner = int(self.radius/2 * visibility)
+                    scaled_inner = int(self.radius*2/3 * visibility)
                     if scaled_width > 0 and scaled_height > 0 and scaled_inner>0:  # Prevent scaling to 0
                         scaled_text = pygame.transform.scale(number_text, (scaled_width, scaled_height))
                         pygame.draw.circle(screen, (255,255,255), (int(self.x), int(self.y)), scaled_inner)
