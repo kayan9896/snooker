@@ -56,6 +56,7 @@ class Game:
         # Scores
         self.player1_score = 0
         self.player2_score = 0
+        
 
         # Initialize pygame and create screen
         pygame.init()
@@ -68,13 +69,14 @@ class Game:
         self.create_balls()
         self.stick = Stick()
         self.setup_rack()
-
+        
 
     def add_message(self, message):
         self.portal.add_message(message)
 
     def draw_portal(self):
-        self.portal.draw(self.screen, self.player1_score, self.player2_score, self.current_player)
+        self.portal.draw(self.screen, self.player1_score, self.player2_score, 
+             self.current_player, self.numbered_balls)
 
     def handle_portal_click(self, pos):
         return self.portal.handle_click(pos)
