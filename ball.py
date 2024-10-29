@@ -67,12 +67,7 @@ class Ball:
         if self.in_game:
             # Draw the ball
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
-            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius/2)
-            # Draw ball number in black
-            ball_font = pygame.font.Font(None, 4)
-            number_text = ball_font.render(str(self.number + 1), True, (0, 0, 0))
-            number_rect = number_text.get_rect(center=(self.x, self.y))
-            screen.blit(number_text, number_rect)
+            
 
             if self.number == 9:  # Add white stripe to 9 ball
                 stripe_rect = pygame.Rect(
@@ -92,18 +87,21 @@ class Ball:
                 self.number_angle += self.rotation_speed
 
                 # Calculate number visibility based on rotation
-                visibility = abs(math.sin(self.number_angle))
+                visibility = abs(math.cos(self.number_angle))
 
-                if visibility > 0.1:  # Only draw if sufficiently visible
+                if visibility > 0.3:  # Only draw if sufficiently visible
                     # Create number text
-                    number_text = self.font.render(str(self.number), True, (255, 255, 255))
+                    
+                    number_text = self.font.render(str(self.number), True, (0, 0, 0))
                     number_rect = number_text.get_rect()
 
                     # Scale the text based on visibility
                     scaled_width = int(number_rect.width * visibility)
                     scaled_height = int(number_rect.height * visibility)
-                    if scaled_width > 0 and scaled_height > 0:  # Prevent scaling to 0
+                    scaled_inner = int(self.radius/2 * visibility)
+                    if scaled_width > 0 and scaled_height > 0 and scaled_inner>0:  # Prevent scaling to 0
                         scaled_text = pygame.transform.scale(number_text, (scaled_width, scaled_height))
+                        pygame.draw.circle(screen, (255,255,255), (int(self.x), int(self.y)), scaled_inner)
 
                         # Position the number in the center of the ball
                         text_rect = scaled_text.get_rect(center=(int(self.x), int(self.y)))
