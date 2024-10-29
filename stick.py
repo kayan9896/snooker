@@ -61,15 +61,6 @@ class Stick:
                 self.striking = False
                 self.visible = False
 
-    def reset_charge(self):
-        """Reset charging state"""
-        self.charge_start_time = 0
-        self.power = self.min_power
-        self.max_power_reached = False
-        self.current_pullback = 0
-        self.striking = False
-        self.strike_complete = False
-
     def draw(self, screen, ball, mouse_pos, angle, portal):
         if not self.visible:
             return
