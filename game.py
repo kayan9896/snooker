@@ -61,6 +61,8 @@ class Game:
         pygame.init()
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.font = pygame.font.Font(None, 36)
+        resized_screen = pygame.transform.scale(self.screen, (1920,1080)) 
+        self.screen.blit(resized_screen, (0, 0))
 
         # Create game objects
         self.create_balls()
@@ -77,7 +79,25 @@ class Game:
     def handle_portal_click(self, pos):
         return self.portal.handle_click(pos)
 
+    def hide_default_cursor(self):
+        pygame.mouse.set_visible(False)
 
+    def draw_custom_cursor(self, screen, pos):
+        # Hide the default cursor
+        pygame.mouse.set_visible(False)
+
+        # Only draw custom cursor if mouse is in the table area
+        if pos[1] < self.TABLE_HEIGHT:
+            # Don't draw the cursor circle during cue ball placement to avoid interference
+            if not self.resetting_cue_ball:
+                pygame.draw.circle(screen, self.WHITE, pos, self.BALL_RADIUS, 1)  # Empty circle
+
+            # Always draw the center dot for aiming
+            pygame.draw.circle(screen, self.WHITE, pos, 1)  # Small dot in the center
+        else:
+            # Show default cursor in portal area
+            pygame.mouse.set_visible(True)
+        
     # Function to draw the pool table
     def draw_pool_table(self):
       # Draw the self.BLUE surface
@@ -543,7 +563,7 @@ class Game:
                 # Hide self.stick after shot
                 self.stick.visible = False
                 # Reset charge
-                self.stick.reset_charge()
+                self.stick.start_strike()
                 # Reset shot ready flag
                 self.shot_ready = False
                 # Mark shot as taken
@@ -555,6 +575,21 @@ class Game:
             for ball in self.numbered_balls:
                 ball.move([self.cue_ball] + [b for b in self.numbered_balls if b != ball])
 
+            if self.stick.striking:
+                self.stick.update_strike()
+                if self.stick.strike_complete and not self.shot_taken:
+                    # Get current mouse position for shot direction
+                    mouse_x, mouse_y = mouse_pos
+                    angle = math.atan2(mouse_y - self.cue_ball.y, mouse_x - self.cue_ball.x)
+
+                    # Apply the shot
+                    self.cue_ball.speed_x = self.stick.power * math.cos(angle)
+                    self.cue_ball.speed_y = self.stick.power * math.sin(angle)
+                    self.cue_ball.top_spin = self.portal.current_spin[0]*self.stick.power/15
+                    self.cue_ball.side_spin = self.portal.current_spin[1]*self.stick.power/35
+
+                    self.shot_taken = True
+            
             # Modify the drawing section:
             self.draw_pool_table()
             for ball in self.numbered_balls:
@@ -582,7 +617,7 @@ class Game:
                     self.stick.visible = True
                     mouse_x, mouse_y = mouse_pos
                     angle = math.atan2(mouse_y - self.cue_ball.y, mouse_x - self.cue_ball.x)
-                    self.stick.draw(self.screen, self.cue_ball, mouse_pos, angle)
+                    self.stick.draw(self.screen, self.cue_ball, mouse_pos, angle, self.portal)
 
             # Display current player and self.foul status
             font = pygame.font.Font(None, 36)
@@ -591,6 +626,9 @@ class Game:
                 self.foul_text = font.render("self.foul", True, (255, 0, 0))
                 self.screen.blit(self.foul_text, (self.WIDTH - 100, 10))
 
+            self.draw_custom_cursor(self.screen, mouse_pos)
+
+                    
             pygame.display.flip()
             pygame.time.Clock().tick(60)
 
