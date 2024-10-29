@@ -30,8 +30,8 @@ class Game:
         self.BALL_COLORS = {
           1: (255, 255, 0),        # Yellow
           2: (0, 0, 155),          # self.BLUE
-          3: (255, 0, 0),          # Dark Red
-          4: (128, 0, 128),        # Purple
+          3: (255, 0, 0),          # Red
+          4: (200, 0, 200),        # Purple
           5: (255, 140, 0),        # Orange
           6: (0, 100, 0),          # Dark Green
           7: (139, 69, 19),        # self.BROWN
@@ -625,7 +625,7 @@ class Game:
             font = pygame.font.Font(None, 36)
             
             if self.foul:
-                self.foul_text = font.render("self.foul", True, (255, 0, 0))
+                self.foul_text = font.render("Foul", True, (255, 0, 0))
                 self.screen.blit(self.foul_text, (self.WIDTH - 100, 10))
 
             self.draw_custom_cursor(self.screen, mouse_pos)
