@@ -30,6 +30,14 @@ class Portal:
         self.MIDDLE_SECTION_WIDTH = self.WIDTH - (2 * self.SIDE_SECTION_WIDTH)
         self.ARROW_SIZE = 20
 
+        self.BALL_STATUS_RADIUS = 15
+        self.INNER_CIRCLE_RADIUS = 10  # Radius for white inner circle
+        self.BALL_STATUS_SPACING = 40
+        self.BALL_STATUS_Y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT + 20
+        self.MESSAGE_Y = self.BALL_STATUS_Y + self.BALL_STATUS_RADIUS * 2 + 20  # More space before messages
+        self.ball_font = pygame.font.Font(None, 24)
+
+        
         # Initialize variables
         self.messages = []
         self.current_spin = (0, 0)
@@ -42,6 +50,29 @@ class Portal:
         if len(self.messages) > self.MAX_MESSAGES:
             self.messages.pop(0)
 
+    def draw_ball_status(self, screen, balls):
+        total_width = self.BALL_STATUS_SPACING * 8
+        start_x = (self.WIDTH - total_width) // 2
+
+        for i in range(9):
+            ball_x = start_x + i * self.BALL_STATUS_SPACING
+            ball_y = self.BALL_STATUS_Y
+            ball = next((b for b in balls if b.number == i + 1), None)
+
+            if ball and ball.in_game:
+                # Draw colored outer circle only for balls still in play
+                pygame.draw.circle(screen, ball.color, (ball_x, ball_y), self.BALL_STATUS_RADIUS)
+                # Draw white inner circle
+                pygame.draw.circle(screen, self.WHITE, (ball_x, ball_y), self.INNER_CIRCLE_RADIUS)
+                # Draw ball number in black
+                number_text = self.ball_font.render(str(i + 1), True, self.BLACK)
+                number_rect = number_text.get_rect(center=(ball_x, ball_y))
+                screen.blit(number_text, number_rect)
+            else:
+                # For potted balls or missing balls, just draw a light outline to show the position
+                pygame.draw.circle(screen, (100, 100, 100), (ball_x, ball_y), self.BALL_STATUS_RADIUS, 1)
+
+    
     def draw_player_arrow(self, screen, current_player):
         # Recalculate arrow position to be at the border between sections
         arrow_points = []
@@ -92,7 +123,7 @@ class Portal:
         indicator_y = self.spin_circle_center[1] - self.current_spin[0] * self.SPIN_CIRCLE_RADIUS
         pygame.draw.circle(screen, self.RED, (int(indicator_x), int(indicator_y)), 5)
 
-    def draw(self, screen, player1_score, player2_score, current_player):
+    def draw(self, screen, player1_score, player2_score, current_player, balls):
         # Draw portal background
         portal_rect = pygame.Rect(0, self.PORTAL_Y, self.WIDTH, self.PORTAL_HEIGHT)
         pygame.draw.rect(screen, self.DARK_GRAY, portal_rect)
@@ -147,12 +178,13 @@ class Portal:
 
         # Draw messages in center area
         message_x = self.WIDTH // 2
-        message_y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT + 30
+        message_y = self.BALL_STATUS_Y + self.BALL_STATUS_RADIUS * 2 + 10  # Position below ball status
         for message in self.messages:
             text = self.font.render(message, True, self.WHITE)
             screen.blit(text, (message_x - text.get_width()//2, message_y))
             message_y += 25
 
+        self.draw_ball_status(screen, balls)
 
     def handle_click(self, pos):
         if self.back_button_rect and self.back_button_rect.collidepoint(pos):
