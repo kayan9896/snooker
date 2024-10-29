@@ -22,6 +22,13 @@ class Portal:
         self.GRAY = (128, 128, 128)
         self.DARK_GRAY = (64, 64, 64)
         self.RED = (255, 0, 0)
+        self.LIGHT_BLUE = (100, 150, 255)
+        self.LIGHT_YELLOW = (255, 255, 150)
+
+        # Add new constants for section widths
+        self.SIDE_SECTION_WIDTH = 200  # Width for player sections
+        self.MIDDLE_SECTION_WIDTH = self.WIDTH - (2 * self.SIDE_SECTION_WIDTH)
+        self.ARROW_SIZE = 20
 
         # Initialize variables
         self.messages = []
@@ -36,26 +43,27 @@ class Portal:
             self.messages.pop(0)
 
     def draw_player_arrow(self, screen, current_player):
+        # Recalculate arrow position to be at the border between sections
         arrow_points = []
-        base_x = 40 if current_player == 1 else self.WIDTH - 40
-        base_y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT // 2
-        arrow_size = 20
-
         if current_player == 1:
+            # Right edge of left yellow section
+            base_x = self.SIDE_SECTION_WIDTH
             arrow_points = [
-                (base_x + arrow_size, base_y - arrow_size//2),
-                (base_x + arrow_size, base_y + arrow_size//2),
-                (base_x, base_y)
+                (base_x, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2 - self.ARROW_SIZE/2),
+                (base_x, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2 + self.ARROW_SIZE/2),
+                (base_x - self.ARROW_SIZE, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2)
             ]
         else:
+            # Left edge of right yellow section
+            base_x = self.WIDTH - self.SIDE_SECTION_WIDTH
             arrow_points = [
-                (base_x - arrow_size, base_y - arrow_size//2),
-                (base_x - arrow_size, base_y + arrow_size//2),
-                (base_x, base_y)
+                (base_x, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2 - self.ARROW_SIZE/2),
+                (base_x, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2 + self.ARROW_SIZE/2),
+                (base_x + self.ARROW_SIZE, self.PORTAL_Y + self.SCOREBOARD_HEIGHT/2)
             ]
+        pygame.draw.polygon(screen, self.BLACK, arrow_points)  # Changed color to BLACK
 
-        pygame.draw.polygon(screen, self.WHITE, arrow_points)
-
+    
     def draw_messages(self, screen):
         # Draw messages in center area
         message_x = self.WIDTH // 2
@@ -89,28 +97,39 @@ class Portal:
         portal_rect = pygame.Rect(0, self.PORTAL_Y, self.WIDTH, self.PORTAL_HEIGHT)
         pygame.draw.rect(screen, self.DARK_GRAY, portal_rect)
 
-        # Draw scoreboard
-        scoreboard_rect = pygame.Rect(0, self.PORTAL_Y, self.WIDTH, self.SCOREBOARD_HEIGHT)
-        pygame.draw.rect(screen, self.GRAY, scoreboard_rect)
+        # Draw scoreboard sections
+        # Left section (Player 1)
+        left_section = pygame.Rect(0, self.PORTAL_Y, self.SIDE_SECTION_WIDTH, self.SCOREBOARD_HEIGHT)
+        pygame.draw.rect(screen, self.LIGHT_YELLOW, left_section)
 
-        # Draw scores and player labels
-        score_y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT//2 - 15
+        # Middle section (Score)
+        middle_section = pygame.Rect(self.SIDE_SECTION_WIDTH, self.PORTAL_Y, 
+                                   self.MIDDLE_SECTION_WIDTH, self.SCOREBOARD_HEIGHT)
+        pygame.draw.rect(screen, self.LIGHT_BLUE, middle_section)
 
-        # Player 1 info (left side)
-        player1_text = self.font.render("Player 1", True, self.WHITE)
-        score_text = self.font.render(str(player1_score), True, self.WHITE)
-        screen.blit(player1_text, (20, score_y))
-        screen.blit(score_text, (80, score_y + 25))
+        # Right section (Player 2)
+        right_section = pygame.Rect(self.WIDTH - self.SIDE_SECTION_WIDTH, self.PORTAL_Y, 
+                                  self.SIDE_SECTION_WIDTH, self.SCOREBOARD_HEIGHT)
+        pygame.draw.rect(screen, self.LIGHT_YELLOW, right_section)
 
-        # Frame text (center)
-        frame_text = self.font.render("Frame 1", True, self.WHITE)
-        screen.blit(frame_text, (self.WIDTH//2 - frame_text.get_width()//2, score_y))
+        # Center all text vertically in scoreboard
+        text_y = self.PORTAL_Y + (self.SCOREBOARD_HEIGHT - self.font.get_height())//2
 
-        # Player 2 info (right side)
-        player2_text = self.font.render("Player 2", True, self.WHITE)
-        score_text = self.font.render(str(player2_score), True, self.WHITE)
-        screen.blit(player2_text, (self.WIDTH - 120, score_y))
-        screen.blit(score_text, (self.WIDTH - 60, score_y + 25))
+        # Draw Player 1 text (centered in left section)
+        player1_text = self.font.render("Player 1", True, self.BLACK)
+        player1_x = (self.SIDE_SECTION_WIDTH - player1_text.get_width())//2
+        screen.blit(player1_text, (player1_x, text_y))
+
+        # Draw scores and frame number in middle section
+        score_text = f"{player1_score} (Frame 1) {player2_score}"
+        score_surface = self.font.render(score_text, True, self.WHITE)
+        score_x = self.SIDE_SECTION_WIDTH + (self.MIDDLE_SECTION_WIDTH - score_surface.get_width())//2
+        screen.blit(score_surface, (score_x, text_y))
+
+        # Draw Player 2 text (centered in right section)
+        player2_text = self.font.render("Player 2", True, self.BLACK)
+        player2_x = self.WIDTH - self.SIDE_SECTION_WIDTH + (self.SIDE_SECTION_WIDTH - player2_text.get_width())//2
+        screen.blit(player2_text, (player2_x, text_y))
 
         # Draw player arrow
         self.draw_player_arrow(screen, current_player)
@@ -125,8 +144,15 @@ class Portal:
 
         # Draw spin indicator
         self.draw_spin_indicator(screen)
-        self.draw_messages(screen)
-        
+
+        # Draw messages in center area
+        message_x = self.WIDTH // 2
+        message_y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT + 30
+        for message in self.messages:
+            text = self.font.render(message, True, self.WHITE)
+            screen.blit(text, (message_x - text.get_width()//2, message_y))
+            message_y += 25
+
 
     def handle_click(self, pos):
         if self.back_button_rect and self.back_button_rect.collidepoint(pos):
