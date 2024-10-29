@@ -36,6 +36,11 @@ class Ball:
         self.rotational_acceleration = acceleration * 0.2  # Much smaller for rotation
         self.initial_angle = 0.0  # Store initial direction of motion
 
+        # Add new attributes for text rotation
+        self.font = pygame.font.Font(None, int(radius * 1.5))
+        self.number_angle = 0  # Current rotation angle of the number
+        self.rotation_speed = 0  # Will be updated based on ball's speed
+
     def spot(self, other_balls):
         self.x = self.foot_spot_x
         self.y = self.foot_spot_y
@@ -56,9 +61,19 @@ class Ball:
         self.x = max(self.edge_width + self.radius, min(self.x, self.width - self.edge_width - self.radius))
         self.y = max(self.edge_width + self.radius, min(self.y, self.height - self.edge_width - self.radius))
 
+    
+
     def draw(self, screen):
         if self.in_game:
+            # Draw the ball
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius/2)
+            # Draw ball number in black
+            ball_font = pygame.font.Font(None, 4)
+            number_text = ball_font.render(str(self.number + 1), True, (0, 0, 0))
+            number_rect = number_text.get_rect(center=(self.x, self.y))
+            screen.blit(number_text, number_rect)
+
             if self.number == 9:  # Add white stripe to 9 ball
                 stripe_rect = pygame.Rect(
                     self.x - self.radius,
@@ -66,9 +81,38 @@ class Ball:
                     self.radius * 2,
                     self.radius * 2/3
                 )
-                pygame.draw.rect(screen, (255,255,255,64), stripe_rect)
+                pygame.draw.rect(screen, (0,0,0,32), stripe_rect)
                 # Redraw the outline
-                pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius, 1)
+                #pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius, 1)
+                
+            if self.number > 0:  # Don't draw number on cue ball
+                # Update rotation based on ball's speed
+                speed = math.sqrt(self.speed_x**2 + self.speed_y**2)
+                self.rotation_speed = speed * 0.1  # Adjust this multiplier to change rotation speed
+                self.number_angle += self.rotation_speed
+
+                # Calculate number visibility based on rotation
+                visibility = abs(math.sin(self.number_angle))
+
+                if visibility > 0.1:  # Only draw if sufficiently visible
+                    # Create number text
+                    number_text = self.font.render(str(self.number), True, (255, 255, 255))
+                    number_rect = number_text.get_rect()
+
+                    # Scale the text based on visibility
+                    scaled_width = int(number_rect.width * visibility)
+                    scaled_height = int(number_rect.height * visibility)
+                    if scaled_width > 0 and scaled_height > 0:  # Prevent scaling to 0
+                        scaled_text = pygame.transform.scale(number_text, (scaled_width, scaled_height))
+
+                        # Position the number in the center of the ball
+                        text_rect = scaled_text.get_rect(center=(int(self.x), int(self.y)))
+
+                        # Draw the number
+                        screen.blit(scaled_text, text_rect)
+
+            
+                
 
     def apply_spin_effects(self):
         if not self.in_game:
@@ -133,7 +177,7 @@ class Ball:
             return
 
         self.apply_spin_effects()
-
+        
         # Update translational speeds with sliding friction
         velocity_mag = math.sqrt(self.speed_x**2 + self.speed_y**2)
         if velocity_mag > 0:
