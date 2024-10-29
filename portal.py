@@ -22,11 +22,11 @@ class Portal:
         self.GRAY = (128, 128, 128)
         self.DARK_GRAY = (64, 64, 64)
         self.RED = (255, 0, 0)
-        self.LIGHT_BLUE = (100, 150, 255)
-        self.LIGHT_YELLOW = (255, 255, 150)
+        self.LIGHT_BLUE = (0, 0, 255)
+        self.LIGHT_YELLOW = (255, 255, 0)
 
         # Add new constants for section widths
-        self.SIDE_SECTION_WIDTH = 200  # Width for player sections
+        self.SIDE_SECTION_WIDTH = 300  # Width for player sections
         self.MIDDLE_SECTION_WIDTH = self.WIDTH - (2 * self.SIDE_SECTION_WIDTH)
         self.ARROW_SIZE = 20
 
@@ -57,11 +57,19 @@ class Portal:
         for i in range(9):
             ball_x = start_x + i * self.BALL_STATUS_SPACING
             ball_y = self.BALL_STATUS_Y
-            ball = next((b for b in balls if b.number == i + 1), None)
+            ball = balls[i]
 
             if ball and ball.in_game:
                 # Draw colored outer circle only for balls still in play
                 pygame.draw.circle(screen, ball.color, (ball_x, ball_y), self.BALL_STATUS_RADIUS)
+                if i == 8:  # Add white stripe to 9 ball
+                    stripe_rect = pygame.Rect(
+                        ball_x - self.BALL_STATUS_RADIUS,
+                        ball_y - self.BALL_STATUS_RADIUS/3,
+                        self.BALL_STATUS_RADIUS * 2,
+                        self.BALL_STATUS_RADIUS* 2/3
+                    )
+                    pygame.draw.rect(screen, (0,0,0,32), stripe_rect)
                 # Draw white inner circle
                 pygame.draw.circle(screen, self.WHITE, (ball_x, ball_y), self.INNER_CIRCLE_RADIUS)
                 # Draw ball number in black
@@ -98,7 +106,7 @@ class Portal:
     def draw_messages(self, screen):
         # Draw messages in center area
         message_x = self.WIDTH // 2
-        message_y = self.PORTAL_Y + self.SCOREBOARD_HEIGHT + 30
+        message_y = self.BALL_STATUS_Y + self.BALL_STATUS_RADIUS * 2 + 10  # Position below ball status
         for message in self.messages:
             text = self.font.render(message, True, self.WHITE)
             screen.blit(text, (message_x - text.get_width()//2, message_y))
@@ -118,7 +126,7 @@ class Portal:
         self.current_spin = (top_spin, side_spin)
 
     def draw_spin_indicator(self, screen):
-        pygame.draw.circle(screen, self.WHITE, self.spin_circle_center, self.SPIN_CIRCLE_RADIUS, 2)
+        pygame.draw.circle(screen, self.WHITE, self.spin_circle_center, self.SPIN_CIRCLE_RADIUS)
         indicator_x = self.spin_circle_center[0] + self.current_spin[1] * self.SPIN_CIRCLE_RADIUS
         indicator_y = self.spin_circle_center[1] - self.current_spin[0] * self.SPIN_CIRCLE_RADIUS
         pygame.draw.circle(screen, self.RED, (int(indicator_x), int(indicator_y)), 5)
@@ -152,7 +160,7 @@ class Portal:
         screen.blit(player1_text, (player1_x, text_y))
 
         # Draw scores and frame number in middle section
-        score_text = f"{player1_score} (Frame 1) {player2_score}"
+        score_text = f"{player1_score} (1) {player2_score}"
         score_surface = self.font.render(score_text, True, self.WHITE)
         score_x = self.SIDE_SECTION_WIDTH + (self.MIDDLE_SECTION_WIDTH - score_surface.get_width())//2
         screen.blit(score_surface, (score_x, text_y))
@@ -177,12 +185,7 @@ class Portal:
         self.draw_spin_indicator(screen)
 
         # Draw messages in center area
-        message_x = self.WIDTH // 2
-        message_y = self.BALL_STATUS_Y + self.BALL_STATUS_RADIUS * 2 + 10  # Position below ball status
-        for message in self.messages:
-            text = self.font.render(message, True, self.WHITE)
-            screen.blit(text, (message_x - text.get_width()//2, message_y))
-            message_y += 25
+        self.draw_messages(screen)
 
         self.draw_ball_status(screen, balls)
 
