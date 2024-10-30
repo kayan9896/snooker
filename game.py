@@ -4,9 +4,10 @@ import math
 from ball import Ball
 from stick import Stick
 from portal import Portal
+from ai_player import AIPlayer
 
 class Game:
-    def __init__(self):
+    def __init__(self, mode="practice"):
         # Constants
         self.WIDTH, self.TABLE_HEIGHT = 800, 400
         self.HEIGHT = 600
@@ -56,7 +57,21 @@ class Game:
         # Scores
         self.player1_score = 0
         self.player2_score = 0
-        
+
+        self.mode = mode
+        self.ai_player = AIPlayer() if mode == "ai" else None
+        self.ai_thinking_timer = 0
+        self.ai_shot_phase = "thinking" 
+        self.break_shot_taken = False
+
+        self.pockets = [
+            (self.EDGE_WIDTH + self.offset, self.EDGE_WIDTH + self.offset),  # Top left
+            (self.WIDTH/2, self.EDGE_WIDTH),                                 # Top middle
+            (self.WIDTH - self.EDGE_WIDTH - self.offset, self.EDGE_WIDTH + self.offset),  # Top right
+            (self.EDGE_WIDTH + self.offset, self.TABLE_HEIGHT - self.EDGE_WIDTH - self.offset),  # Bottom left
+            (self.WIDTH/2, self.TABLE_HEIGHT - self.EDGE_WIDTH),                          # Bottom middle
+            (self.WIDTH - self.EDGE_WIDTH - self.offset, self.TABLE_HEIGHT - self.EDGE_WIDTH - self.offset)  # Bottom right
+        ]
 
         # Initialize pygame and create screen
         pygame.init()
@@ -69,7 +84,7 @@ class Game:
         self.create_balls()
         self.stick = Stick()
         self.setup_rack()
-        
+
 
     def add_message(self, message):
         self.portal.add_message(message)
@@ -99,7 +114,7 @@ class Game:
         else:
             # Show default cursor in portal area
             pygame.mouse.set_visible(True)
-        
+
     # Function to draw the pool table
     def draw_pool_table(self):
       # Draw the self.BLUE surface
@@ -408,6 +423,8 @@ class Game:
         if self.foul:
             self.current_player = 3 - self.current_player
             self.resetting_cue_ball = True
+            # The initial placement should only be true if the break shot hasn't been taken
+            self.is_initial_placement = not self.break_shot_taken
             if not self.numbered_balls[8].in_game:
                 self.numbered_balls[8].spot([self.cue_ball] + [b for b in self.numbered_balls if b.in_game])
         elif not self.numbered_balls[8].in_game:
@@ -418,6 +435,14 @@ class Game:
             if not any_ball_pocketed:
                 self.current_player = 3 - self.current_player
                 self.add_message(f"No balls pocketed. Player {self.current_player}'s turn")
+
+            # Reset shot states when switching turns
+            self.shot_taken = False
+            self.mouse_pressed = False
+            self.shot_ready = False
+            if self.mode == "ai" and self.current_player == 2:
+                self.ai_shot_phase = "thinking"
+                self.ai_thinking_timer = 0
 
         if not self.numbered_balls[self.current_target_ball - 1].in_game:
             for i in range(self.current_target_ball, 10):
@@ -472,6 +497,79 @@ class Game:
       return True
 
 
+    def handle_ai_turn(self):
+        if self.current_player != 2 or self.shot_taken:
+            return
+
+        # Handle cue ball placement
+        if self.resetting_cue_ball:
+            self._handle_ai_ball_placement()
+            return
+
+        # Only proceed if all balls have stopped moving
+        if not self.are_all_balls_stopped([self.cue_ball] + self.numbered_balls):
+            return
+
+        # Get AI shot calculations once
+        if self.ai_shot_phase == "thinking":
+            self._calculate_ai_shot()
+            self.ai_thinking_timer += 1
+            if self.ai_thinking_timer > 60:
+                self.ai_shot_phase = "aiming"
+                self.ai_thinking_timer = 0
+                self.stick.visible = True
+
+        elif self.ai_shot_phase == "aiming":
+            if self.cue_ball.in_game:
+                self.stick.start_charging()
+                self.mouse_pressed = True
+                self.ai_shot_phase = "charging"
+
+        elif self.ai_shot_phase == "charging":
+            if self.stick.power >= 10:
+                self.mouse_pressed = False
+                self.shot_ready = True
+                self.ai_shot_phase = "shooting"
+
+    def _handle_ai_ball_placement(self):
+        """Helper method to handle AI ball placement"""
+        if not self.ball_placement_confirmed:
+            new_x, new_y = self.ai_player.find_legal_cue_ball_position(
+                self, 
+                self.is_initial_placement
+            )
+            self.cue_ball.x = new_x
+            self.cue_ball.y = new_y
+            self.ball_placement_confirmed = True
+        else:
+            self.ai_thinking_timer += 1
+            if self.ai_thinking_timer > 30:
+                self.resetting_cue_ball = False
+                self.ball_placement_confirmed = False
+                self.foul = False
+                self.shot_taken = False
+                self.ai_thinking_timer = 0
+                self.ai_shot_phase = "thinking"
+
+    def _calculate_ai_shot(self):
+        """Helper method to calculate AI shot parameters"""
+        target_ball = self.numbered_balls[self.current_target_ball - 1]
+        self.ai_shot_params = self.ai_player.calculate_shot(
+            self.cue_ball, target_ball, self.numbered_balls, 
+            self.pockets, self.BALL_RADIUS
+        )
+
+        if self.ai_shot_params is not None:  # if angle is not None
+            angle = self.ai_shot_params[0]
+            distance = 100
+            self.ai_mouse_pos = (
+                self.cue_ball.x + (distance * math.cos(angle)),
+                self.cue_ball.y + (distance * math.sin(angle))
+            )
+        else:
+            self.ai_mouse_pos = pygame.mouse.get_pos()
+
+    
     def run(self):
         # Main game loop
         while self.running:
@@ -483,30 +581,29 @@ class Game:
                     mouse_pos = event.pos
                     result = self.handle_portal_click(mouse_pos)
                     if result == "menu":
-                        return "menu"  # Return to menu
+                        return "menu"
 
-                    # Check if click is in spin circle area
-                    dx = mouse_pos[0] - self.portal.spin_circle_center[0]
-                    dy = mouse_pos[1] - self.portal.spin_circle_center[1]
-                    if math.sqrt(dx**2 + dy**2) <= self.portal.SPIN_CIRCLE_RADIUS:
-                        self.portal.handle_spin_input(mouse_pos)
-                        continue
+                    # Only handle mouse clicks for ball placement if it's not AI's turn
+                    if not (self.mode == "ai" and self.current_player == 2):
+                        dx = mouse_pos[0] - self.portal.spin_circle_center[0]
+                        dy = mouse_pos[1] - self.portal.spin_circle_center[1]
+                        if math.sqrt(dx**2 + dy**2) <= self.portal.SPIN_CIRCLE_RADIUS:
+                            self.portal.handle_spin_input(mouse_pos)
+                            continue
 
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                        mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                    if self.resetting_cue_ball:
-                        # Ball placement logic
-                        if self.is_valid_cue_position(mouse_x, mouse_y, self.cue_ball, self.numbered_balls, self.is_initial_placement):
-                            self.cue_ball.x, self.cue_ball.y = mouse_x, mouse_y
-                            self.ball_placement_confirmed = True
-                            print("Ball placement confirmed")
-                            if self.is_initial_placement: self.is_initial_placement = False
+                        if self.resetting_cue_ball:
+                            if self.is_valid_cue_position(mouse_x, mouse_y, self.cue_ball, self.numbered_balls, self.is_initial_placement):
+                                self.cue_ball.x, self.cue_ball.y = mouse_x, mouse_y
+                                self.ball_placement_confirmed = True
+                                if self.is_initial_placement: 
+                                    self.is_initial_placement = False
 
-                    elif self.cue_ball.speed_x == 0 and self.cue_ball.speed_y == 0 and not self.resetting_cue_ball:
-                        # Shot preparation
-                        if self.cue_ball.in_game:
-                            self.mouse_pressed = True
-                            self.stick.start_charging()
+                        elif self.cue_ball.speed_x == 0 and self.cue_ball.speed_y == 0 and not self.resetting_cue_ball:
+                            if self.cue_ball.in_game:
+                                self.mouse_pressed = True
+                                self.stick.start_charging()
 
                 elif event.type == pygame.MOUSEMOTION:
                     if pygame.mouse.get_pressed()[0]:
@@ -530,45 +627,47 @@ class Game:
                         self.mouse_pressed = False
                         self.shot_ready = True
 
-            # Get current mouse position
-            mouse_pos = pygame.mouse.get_pos()
+            # Handle AI turn
+            if self.mode == "ai" and self.current_player == 2:
+                self.handle_ai_turn()
+                mouse_pos = getattr(self, 'ai_mouse_pos', pygame.mouse.get_pos())
+            else:
+                mouse_pos = pygame.mouse.get_pos()
 
-            # Update self.stick power if mouse is pressed
+
+            # Update stick power if mouse is pressed
             if self.mouse_pressed and self.cue_ball.speed_x == 0 and self.cue_ball.speed_y == 0:
-                # Calculate angle between ball and mouse for drawing and potential shot
-                mouse_x, mouse_y = mouse_pos
-                angle = math.atan2(mouse_y - self.cue_ball.y, mouse_x - self.cue_ball.x)
-
-                # Update power
                 self.stick.update_power()
 
-                # Automatic shot release when max power is reached
                 if self.stick.max_power_reached:
                     self.shot_ready = True
-                    self.mouse_pressed=False
+                    self.mouse_pressed = False
 
             # Check if shot is ready to be released
             if self.shot_ready and self.cue_ball.speed_x == 0 and self.cue_ball.speed_y == 0 and not self.shot_taken:
-                # Get current mouse position for shot direction
-                mouse_x, mouse_y = mouse_pos
+                if self.mode == "ai" and self.current_player == 2:
+                    if hasattr(self, 'ai_shot_params'):
+                        if self.ai_shot_params is not None:
+                            angle, power, top_spin, side_spin = self.ai_shot_params
+                            if angle is not None:
+                                self.cue_ball.speed_x = power * math.cos(angle)
+                                self.cue_ball.speed_y = power * math.sin(angle)
+                                self.cue_ball.top_spin = top_spin * power/15
+                                self.cue_ball.side_spin = side_spin * power/35
+                else:
+                    # Human player shot code...
+                    mouse_x, mouse_y = mouse_pos
+                    angle = math.atan2(mouse_y - self.cue_ball.y, mouse_x - self.cue_ball.x)
+                    self.cue_ball.speed_x = self.stick.power * math.cos(angle)
+                    self.cue_ball.speed_y = self.stick.power * math.sin(angle)
+                    self.cue_ball.top_spin = self.portal.current_spin[0]*self.stick.power/15
+                    self.cue_ball.side_spin = self.portal.current_spin[1]*self.stick.power/35
 
-                # Calculate velocity based on opposite direction of self.stick
-                angle = math.atan2(mouse_y - self.cue_ball.y, mouse_x - self.cue_ball.x)
-
-                # Use the calculated power
-                self.cue_ball.speed_x = self.stick.power * math.cos(angle)
-                self.cue_ball.speed_y = self.stick.power * math.sin(angle)
-
-                self.cue_ball.top_spin = self.portal.current_spin[0]*self.stick.power/15
-                self.cue_ball.side_spin = self.portal.current_spin[1]*self.stick.power/35
-
-                # Hide self.stick after shot
+                if not self.break_shot_taken:
+                    self.break_shot_taken = True
                 self.stick.visible = False
-                # Reset charge
                 self.stick.start_strike()
-                # Reset shot ready flag
                 self.shot_ready = False
-                # Mark shot as taken
                 self.shot_taken = True
 
 
@@ -591,7 +690,7 @@ class Game:
                     self.cue_ball.side_spin = self.portal.current_spin[1]*self.stick.power/35
 
                     self.shot_taken = True
-            
+
             # Modify the drawing section:
             self.draw_pool_table()
             for ball in self.numbered_balls:
@@ -623,14 +722,14 @@ class Game:
 
             # Display current player and self.foul status
             font = pygame.font.Font(None, 36)
-            
+
             if self.foul:
                 self.foul_text = font.render("Foul", True, (255, 0, 0))
                 self.screen.blit(self.foul_text, (self.WIDTH - 100, 10))
 
             self.draw_custom_cursor(self.screen, mouse_pos)
 
-                    
+
             pygame.display.flip()
             pygame.time.Clock().tick(60)
 
