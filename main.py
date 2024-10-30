@@ -1,6 +1,6 @@
 import pygame
 from menu import Menu
-from game import Game
+from game2 import Game
 
 def main():
     pygame.init()
@@ -19,8 +19,8 @@ def main():
         elif current_screen == "quit":
             running = False
         elif current_screen == "ai":
-            print("AI mode not implemented yet")
-            current_screen = "menu"
+            game = Game(mode="ai")
+            current_screen = game.run()
         elif current_screen == "online":
             print("Online mode not implemented yet")
             current_screen = "menu"
