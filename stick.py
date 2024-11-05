@@ -8,7 +8,7 @@ class Stick:
         self.color = color
         self.thickness = 4
         self.visible = True
-        self.max_power = 25
+        self.max_power = 20
         self.min_power = 5
         self.max_charge_time = 5
         self.power = self.min_power
