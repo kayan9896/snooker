@@ -47,7 +47,7 @@ class Game:
         self.resetting_cue_ball = True
         self.ball_placement_confirmed = False
         self.shot_taken = False
-        self.current_player = 1
+        self.current_player = 2
         self.foul = False
         self.game_over = False
         self.is_initial_placement = True
