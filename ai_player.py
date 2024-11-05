@@ -3,7 +3,7 @@ import random
 
 class AIPlayer:
     def __init__(self):
-        self.difficulty = 2  # Can be adjusted for different difficulty levels
+        self.difficulty = 1  # Can be adjusted for different difficulty levels
         self.top_spin = 0
         self.side_spin = 0
         self.pockets = []  # Will be populated when calculate_shot is called
@@ -33,14 +33,14 @@ class AIPlayer:
                 [ball for ball in all_balls if ball != target_ball]
             )
 
-            #if not direct_blocked:
+            if not direct_blocked:
                 # Try direct shot only if path is clear
-            direct_shot = self.evaluate_direct_shot(cue_ball, target_ball, best_pocket, all_balls)
-            if direct_shot:
-                shot_params, direct_score = direct_shot
-                print(direct_score)
-                if direct_score > 0.1:  # Good direct shot threshold
-                    return shot_params
+                direct_shot = self.evaluate_direct_shot(cue_ball, target_ball, best_pocket, all_balls)
+                if direct_shot:
+                    shot_params, direct_score = direct_shot
+                    print(direct_score)
+                    if direct_score > 0.1:  # Good direct shot threshold
+                        return shot_params
 
             # If direct shot is blocked or not good enough, try bank shots
             bank_shot = self.try_bank_shots(cue_ball, target_ball, all_balls, pockets)
@@ -127,15 +127,14 @@ class AIPlayer:
             target_ball.y - cue_ball.y,
             target_ball.x - cue_ball.x
         ))
+        print(cut_angle / math.pi*180)
         cut_angle = min(cut_angle, math.pi - cut_angle)
 
         # Reject extremely difficult cuts
         if cut_angle > math.radians(75):
+            print(cut_angle / math.pi*180,0)
             return None
 
-        # Check if shot is blocked
-        if self.is_shot_blocked(cue_ball.x, cue_ball.y, target_ball.x, target_ball.y, all_balls):
-            return None
 
         # Calculate distances
         distance_to_target = math.sqrt(
@@ -149,11 +148,11 @@ class AIPlayer:
 
         # Score the shot
         score = 1.0
-        score -= (distance_to_target + target_to_pocket) / 1000
+        score -= (distance_to_target + target_to_pocket) / 10000
         score -= cut_angle / math.pi
-
+        print(cut_angle / math.pi*180,score)
         # Calculate power
-        power = min((distance_to_target + target_to_pocket/2) / 4, 15) * self.difficulty
+        power = min((distance_to_target + target_to_pocket/2) / 4, 20) * self.difficulty
 
         return (ideal_angle, power, 0, 0), score
 
@@ -163,7 +162,7 @@ class AIPlayer:
         best_bank_score = float('-inf')
 
         # Define cushions with offset
-        offset = self.BALL_RADIUS * 1.5
+        offset = self.POCKET_RADIUS / math.sqrt(2)
         top_cushion = self.EDGE_WIDTH + offset
         bottom_cushion = self.TABLE_HEIGHT - self.EDGE_WIDTH - offset
         left_cushion = self.EDGE_WIDTH + offset
@@ -214,7 +213,7 @@ class AIPlayer:
 
                             if score > best_bank_score:
                                 total_distance = distance_to_cushion + distance_to_target
-                                power = min(total_distance / 3, 15) * 1.2 * self.difficulty
+                                power = min(total_distance / 3, 20) * self.difficulty
 
                                 best_bank_score = score
                                 best_bank_shot = (angle, power, 0, 0)
@@ -315,7 +314,7 @@ class AIPlayer:
                 if is_initial_placement:
                     # For breaking, try to get a centered position
                     suggested_x = (min_x + max_x) / 2
-                    suggested_y = (min_y + max_y) / 2
+                    suggested_y = (min_y + max_y) / random.uniform(1, 3)
                 else:
                     # For regular placement, try to get a good angle to the target ball
                     # Start from a position slightly behind the target ball
