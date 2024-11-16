@@ -1,11 +1,12 @@
 import pygame
 import sys
-
+from waiting_screen import WaitingScreen
 class Menu:
     def __init__(self, screen_width, screen_height):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.screen = pygame.display.set_mode((screen_width, screen_height))
+        self.waiting_screen=WaitingScreen(800,600)
         pygame.display.set_caption("Billiards Game")
 
         # Colors
@@ -69,7 +70,11 @@ class Menu:
                     elif ai_button.collidepoint(mouse_pos):
                         return "ai"
                     elif online_button.collidepoint(mouse_pos):
-                        return "online"
+                        result = self.waiting_screen.run()
+                        if result == "matched":
+                            return "online", self.waiting_screen.connection
+                        else:  # timeout or user cancelled
+                            return "menu", None
 
             pygame.display.flip()
 
