@@ -1,6 +1,7 @@
 import pygame
 from menu import Menu
-from game2 import Game
+from game import Game
+from online_game import OnlineGame
 
 def main():
     pygame.init()
@@ -8,11 +9,16 @@ def main():
 
     running = True
     current_screen = "menu"
+    game_connection = None
 
     while running:
         if current_screen == "menu":
             menu = Menu(WIDTH, HEIGHT)
-            current_screen = menu.run()
+            result = menu.run()
+            if isinstance(result, tuple):
+                current_screen, game_connection = result
+            else:
+                current_screen = result
         elif current_screen == "practice":
             game = Game()
             current_screen = game.run()
@@ -22,10 +28,15 @@ def main():
             game = Game(mode="ai")
             current_screen = game.run()
         elif current_screen == "online":
-            print("Online mode not implemented yet")
-            current_screen = "menu"
+            if game_connection and game_connection.is_match_found():
+                game = OnlineGame(game_connection)
+                current_screen = game.run()
+            else:
+                print("Error: No valid game connection")
+                current_screen = "menu"
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()
